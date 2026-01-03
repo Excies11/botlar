@@ -3,8 +3,17 @@ from discord.ext import commands
 from discord.ext.commands import CommandNotFound, MissingPermissions, BadArgument
 from datetime import timedelta
 
+# Yasaklı kelimeler
 AUTO_MOD_WORDS = ["küfür1", "küfür2", "amk", "aq"]
 
+# ================= BOT INSTANCE =================
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
+
+mod_bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
+
+# ================= COG =================
 class Mod(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -91,6 +100,7 @@ class Mod(commands.Cog):
     # ================= AUTOMOD =================
     @commands.Cog.listener()
     async def on_message(self, message):
+        # Botları ve DM'leri yoksay
         if message.author.bot or message.guild is None:
             return
 
@@ -104,25 +114,37 @@ class Mod(commands.Cog):
                 f"🚨 **GUARD:** {message.author.mention} yasaklı kelime kullandı!",
                 delete_after=3
             )
-            return  # komutları bozmamak için burada dur
-
-        # Komutları işle
-        await self.bot.process_commands(message)
-
-    # ================= ERROR HANDLER =================
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
-        if isinstance(error, CommandNotFound):
             return
-        elif isinstance(error, MissingPermissions):
-            await ctx.send("❌ Bu komutu kullanmak için yetkin yok!")
-        elif isinstance(error, BadArgument):
-            await ctx.send("❌ Hatalı argüman! Örnek kullanım:\n`!warn @user sebep`")
-        elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(f"❌ Eksik argüman! Doğru kullanım:\n`{ctx.command} {ctx.command.signature}`")
-        else:
-            await ctx.send(f"❌ Bir hata oluştu: {str(error)}")
 
-# ================= SETUP =================
-async def setup(bot):
-    await bot.add_cog(Mod(bot))
+# ================= ERROR HANDLER =================
+@mod_bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, CommandNotFound):
+        return
+    elif isinstance(error, MissingPermissions):
+        await ctx.send("❌ Bu komutu kullanmak için yetkin yok!")
+    elif isinstance(error, BadArgument):
+        await ctx.send(f"❌ Hatalı argüman! Örnek kullanım:\n`!{ctx.command} {ctx.command.signature}`")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"❌ Eksik argüman! Doğru kullanım:\n`!{ctx.command} {ctx.command.signature}`")
+    else:
+        await ctx.send(f"❌ Bir hata oluştu: {str(error)}")
+
+# ================= PROCESS COMMANDS =================
+@mod_bot.event
+async def on_message(message):
+    # Automod ve cog komutlarını işlemek için
+    await mod_bot.process_commands(message)
+
+# ================= BOT SETUP =================
+async def setup():
+    await mod_bot.add_cog(Mod(mod_bot))
+
+# ================= BOT RUN =================
+if __name__ == "__main__":
+    import asyncio
+    async def main():
+        await setup()
+        await mod_bot.start(os.getenv("MOD_TOKEN"))
+
+    asyncio.run(main())
