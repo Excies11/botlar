@@ -38,11 +38,16 @@ async def start_mod_bot():
     await mod_bot.load_extension("cogs.mod")
     await mod_bot.start(os.getenv("MOD_TOKEN"))
 
+async def start_mlog_bot():
+    await mod_bot.load_extension("cogs.mlogs")
+    await mod_bot.start(os.getenv("MLOG_TOKEN"))
+
 
 async def main():
     await asyncio.gather(
         start_log_bot(),
-        start_mod_bot()
+        start_mod_bot(),
+        start_mlog_bot()
     )
 
 asyncio.run(main())
