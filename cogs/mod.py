@@ -9,8 +9,8 @@ class Mod(commands.Cog):
         self.bot = bot
 
     # ================= HELP =================
-    @commands.command()
-    async def help(self, ctx):
+    @commands.command(name="help")
+    async def help_command(self, ctx):
         embed = discord.Embed(
             title="🛡️ Moderasyon Komutları",
             description="Yetkili komutları aşağıda listelenmiştir",
@@ -22,7 +22,7 @@ class Mod(commands.Cog):
         embed.add_field(name="!untimeout", value="Susturmayı kaldırır", inline=False)
         embed.add_field(name="!clear", value="Mesaj siler", inline=False)
         embed.add_field(name="!slowmode", value="Yavaş mod", inline=False)
-        embed.add_field(name="!lock / !unlock", value="Kanal kilitle", inline=False)
+        embed.add_field(name="!lock / !unlock", value="Kanal kilit aç/kapat", inline=False)
         embed.add_field(name="!warn", value="Uyarı verir", inline=False)
         embed.set_footer(text="Gelişmiş Mod Bot")
         await ctx.send(embed=embed)
@@ -87,19 +87,28 @@ class Mod(commands.Cog):
     async def warn(self, ctx, member: discord.Member, *, reason="Sebep yok"):
         await ctx.send(f"⚠️ {member.mention} uyarıldı | {reason}")
 
-    # ================= AUTOMOD =================
+    # ================= AUTOMOD / GUARD =================
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author.bot:
+        # botlar ve DM'ler ignore
+        if message.author.bot or message.guild is None:
             return
 
-        if any(word in message.content.lower() for word in AUTO_MOD_WORDS):
-            await message.delete()
+        # automod kontrolü
+        content = message.content.lower()
+        if any(word in content for word in AUTO_MOD_WORDS):
+            try:
+                await message.delete()
+            except discord.Forbidden:
+                return
+
             await message.channel.send(
-                f"🚫 {message.author.mention} yasaklı kelime!",
+                f"🚨 **GUARD:** {message.author.mention} yasaklı kelime kullandı!",
                 delete_after=3
             )
+            return  # 🔥 burada dur → ikinci kez işlem olmaz
 
+        # komutları bozmamak için
         await self.bot.process_commands(message)
 
 async def setup(bot):
