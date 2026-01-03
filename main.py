@@ -4,7 +4,7 @@ import os
 import datetime
 
 TOKEN = os.getenv("TOKEN")
-LOG_KANAL_ID = int(os.getenv("LOG_KANAL_ID"))
+LOG_KANAL_ID = (os.getenv("LOG_KANAL_ID"))
 
 intents = discord.Intents.default()
 intents.members = True
