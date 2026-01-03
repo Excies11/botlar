@@ -1,68 +1,49 @@
+import os
 import discord
 from discord.ext import commands
-from datetime import datetime
 
+intents = discord.Intents.default()
+intents.members = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+TOKEN = os.getenv("LOG_TOKEN")
 LOG_CHANNEL_ID = 1409915479438393425
-AUTO_ROLE_ID = 1409896783743549512
+OTOROL_ID = 1409896783743549512
 
-class Logs(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+if TOKEN is None:
+    raise ValueError("LOG_TOKEN bulunamadı!")
 
-    @commands.Cog.listener()
-    async def on_member_join(self, member):
-        # ---------- OTOROL ----------
-        role = member.guild.get_role(AUTO_ROLE_ID)
-        if role:
-            try:
-                await member.add_roles(role, reason="Otomatik rol")
-            except discord.Forbidden:
-                print("Rol verme yetkim yok!")
-            except Exception as e:
-                print(f"Otorol hatası: {e}")
+@bot.event
+async def on_ready():
+    print(f"{bot.user} | Log bot aktif")
 
-        # ---------- GİRİŞ LOG ----------
-        channel = self.bot.get_channel(LOG_CHANNEL_ID)
-        if channel is None:
-            return
+@bot.event
+async def on_member_join(member):
+    role = member.guild.get_role(OTOROL_ID)
+    if role:
+        await member.add_roles(role)
 
+    channel = bot.get_channel(LOG_CHANNEL_ID)
+    if channel:
         embed = discord.Embed(
             title="🟢 Sunucuya Katıldı",
-            description=f"{member.mention} sunucuya katıldı.",
-            color=discord.Color.green(),
-            timestamp=datetime.utcnow()
+            description=f"{member.mention}",
+            color=0x2ecc71
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
-        embed.add_field(
-            name="👤 Kullanıcı",
-            value=f"{member} (`{member.id}`)",
-            inline=False
-        )
-        embed.set_footer(text="Giriş Logu")
-
+        embed.set_footer(text=f"ID: {member.id}")
         await channel.send(embed=embed)
 
-    @commands.Cog.listener()
-    async def on_member_remove(self, member):
-        # ---------- ÇIKIŞ LOG ----------
-        channel = self.bot.get_channel(LOG_CHANNEL_ID)
-        if channel is None:
-            return
-
+@bot.event
+async def on_member_remove(member):
+    channel = bot.get_channel(LOG_CHANNEL_ID)
+    if channel:
         embed = discord.Embed(
             title="🔴 Sunucudan Ayrıldı",
-            description=f"**{member}** sunucudan ayrıldı.",
-            color=discord.Color.red(),
-            timestamp=datetime.utcnow()
+            description=f"{member}",
+            color=0xe74c3c
         )
-        embed.add_field(
-            name="👤 Kullanıcı ID",
-            value=str(member.id),
-            inline=False
-        )
-        embed.set_footer(text="Çıkış Logu")
-
+        embed.set_footer(text=f"ID: {member.id}")
         await channel.send(embed=embed)
 
-async def setup(bot):
-    await bot.add_cog(Logs(bot))
+bot.run(TOKEN)
