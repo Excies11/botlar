@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord.ext.commands import CommandNotFound, MissingPermissions, BadArgument
 from datetime import timedelta
 
 AUTO_MOD_WORDS = ["küfür1", "küfür2", "amk", "aq"]
@@ -16,15 +17,15 @@ class Mod(commands.Cog):
             description="Yetkili komutları aşağıda listelenmiştir",
             color=discord.Color.blurple()
         )
-        embed.add_field(name="!ban", value="Kullanıcıyı banlar", inline=False)
-        embed.add_field(name="!kick", value="Kullanıcıyı atar", inline=False)
-        embed.add_field(name="!timeout", value="Geçici susturma", inline=False)
-        embed.add_field(name="!untimeout", value="Susturmayı kaldırır", inline=False)
-        embed.add_field(name="!clear", value="Mesaj siler", inline=False)
-        embed.add_field(name="!slowmode", value="Yavaş mod", inline=False)
+        embed.add_field(name="!ban", value="Kullanıcıyı banlar\n`!ban @user sebep`", inline=False)
+        embed.add_field(name="!kick", value="Kullanıcıyı atar\n`!kick @user sebep`", inline=False)
+        embed.add_field(name="!mute", value="Kullanıcıyı susturur\n`!mute @user dakika`", inline=False)
+        embed.add_field(name="!unmute", value="Susturmayı kaldırır\n`!unmute @user`", inline=False)
+        embed.add_field(name="!clear", value="Mesaj siler\n`!clear 10`", inline=False)
+        embed.add_field(name="!slowmode", value="Yavaş mod\n`!slowmode 5`", inline=False)
         embed.add_field(name="!lock / !unlock", value="Kanal kilit aç/kapat", inline=False)
-        embed.add_field(name="!warn", value="Uyarı verir", inline=False)
-        embed.set_footer(text="Gelişmiş Mod Bot")
+        embed.add_field(name="!warn", value="Uyarı verir\n`!warn @user sebep`", inline=False)
+        embed.set_footer(text="Gelişmiş Moderasyon Bot")
         await ctx.send(embed=embed)
 
     # ================= BAN =================
@@ -41,16 +42,16 @@ class Mod(commands.Cog):
         await member.kick(reason=reason)
         await ctx.send(f"👢 {member} atıldı | {reason}")
 
-    # ================= TIMEOUT =================
+    # ================= MUTE / UNMUTE =================
     @commands.command()
     @commands.has_permissions(moderate_members=True)
-    async def timeout(self, ctx, member: discord.Member, minutes: int, *, reason="Sebep yok"):
-        await member.timeout(timedelta(minutes=minutes), reason=reason)
+    async def mute(self, ctx, member: discord.Member, minutes: int):
+        await member.timeout(timedelta(minutes=minutes))
         await ctx.send(f"🔇 {member} {minutes} dk susturuldu")
 
     @commands.command()
     @commands.has_permissions(moderate_members=True)
-    async def untimeout(self, ctx, member: discord.Member):
+    async def unmute(self, ctx, member: discord.Member):
         await member.timeout(None)
         await ctx.send(f"🔊 {member} susturması kaldırıldı")
 
@@ -68,7 +69,7 @@ class Mod(commands.Cog):
         await ctx.channel.edit(slowmode_delay=seconds)
         await ctx.send(f"🐢 Slowmode: {seconds} saniye")
 
-    # ================= LOCK =================
+    # ================= LOCK / UNLOCK =================
     @commands.command()
     @commands.has_permissions(manage_channels=True)
     async def lock(self, ctx):
@@ -87,29 +88,41 @@ class Mod(commands.Cog):
     async def warn(self, ctx, member: discord.Member, *, reason="Sebep yok"):
         await ctx.send(f"⚠️ {member.mention} uyarıldı | {reason}")
 
-    # ================= AUTOMOD / GUARD =================
+    # ================= AUTOMOD =================
     @commands.Cog.listener()
     async def on_message(self, message):
-        # botlar ve DM'ler ignore
         if message.author.bot or message.guild is None:
             return
 
-        # automod kontrolü
         content = message.content.lower()
         if any(word in content for word in AUTO_MOD_WORDS):
             try:
                 await message.delete()
             except discord.Forbidden:
                 return
-
             await message.channel.send(
                 f"🚨 **GUARD:** {message.author.mention} yasaklı kelime kullandı!",
                 delete_after=3
             )
-            return  # 🔥 burada dur → ikinci kez işlem olmaz
+            return  # komutları bozmamak için burada dur
 
-        # komutları bozmamak için
+        # Komutları işle
         await self.bot.process_commands(message)
 
+    # ================= ERROR HANDLER =================
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        if isinstance(error, CommandNotFound):
+            return
+        elif isinstance(error, MissingPermissions):
+            await ctx.send("❌ Bu komutu kullanmak için yetkin yok!")
+        elif isinstance(error, BadArgument):
+            await ctx.send("❌ Hatalı argüman! Örnek kullanım:\n`!warn @user sebep`")
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send(f"❌ Eksik argüman! Doğru kullanım:\n`{ctx.command} {ctx.command.signature}`")
+        else:
+            await ctx.send(f"❌ Bir hata oluştu: {str(error)}")
+
+# ================= SETUP =================
 async def setup(bot):
     await bot.add_cog(Mod(bot))
