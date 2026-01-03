@@ -4,7 +4,13 @@ from discord.ext.commands import CommandNotFound, MissingPermissions, BadArgumen
 from datetime import timedelta
 
 AUTO_MOD_WORDS = ["küfür1", "küfür2", "amk", "aq"]
-
+await mod_bot.change_presence(
+    status=discord.Status.online,
+    activity=discord.Activity(
+        type=discord.ActivityType.watching,
+        name="SSD Private | SSD Moderation"
+    )
+)
 class Mod(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
