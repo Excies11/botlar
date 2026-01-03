@@ -3,8 +3,8 @@ from discord.ext import commands
 import os
 import datetime
 
-TOKEN = os.getenv("OTg5MjI5MjQ1NzIzMTg5MjU4.GNH23Z.xuA5gjYqtGwB_lZf0oC8Y7Kj7oo_P4EDHYdfNw")
-LOG_KANAL_ID = int(os.getenv("1409915479438393425"))
+TOKEN = os.getenv("TOKEN")
+LOG_KANAL_ID = int(os.getenv("LOG_KANAL_ID"))
 
 intents = discord.Intents.default()
 intents.members = True
