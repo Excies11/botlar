@@ -3,7 +3,13 @@ from discord.ext import commands
 
 LOG_CHANNEL_ID = 1409915479438393425
 OTOROL_ID = 1409896783743549512
-
+await mod_bot.change_presence(
+    status=discord.Status.online,
+    activity=discord.Activity(
+        type=discord.ActivityType.watching,
+        name="SSD Private | SSD Login"
+    )
+)
 class Logs(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
