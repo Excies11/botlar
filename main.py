@@ -1,37 +1,41 @@
 import os
 import discord
 from discord.ext import commands
+import asyncio
 
 intents = discord.Intents.default()
 intents.members = True
-intents.message_content = True  # ileride komutlar için
+intents.message_content = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+# ===== LOG BOT =====
+log_bot = commands.Bot(command_prefix="!", intents=intents)
 
-@bot.event
+@log_bot.event
 async def on_ready():
-    print(f"{bot.user} aktif!")
+    print(f"LOG BOT aktif: {log_bot.user}")
 
-# COG YÜKLEME
-initial_extensions = [
-    "cogs.logs",
-]
+async def start_log_bot():
+    await log_bot.load_extension("cogs.logs")
+    await log_bot.start(os.getenv("LOG_TOKEN"))
 
-async def load_cogs():
-    for ext in initial_extensions:
-        try:
-            await bot.load_extension(ext)
-            print(f"{ext} yüklendi")
-        except Exception as e:
-            print(f"{ext} yüklenemedi: {e}")
 
-TOKEN = os.getenv("TOKEN")
-if TOKEN is None:
-    raise ValueError("TOKEN bulunamadı! Railway Variables kontrol et.")
+# ===== MOD BOT =====
+mod_bot = commands.Bot(command_prefix="!", intents=intents)
 
+@mod_bot.event
+async def on_ready():
+    print(f"MOD BOT aktif: {mod_bot.user}")
+
+async def start_mod_bot():
+    await mod_bot.load_extension("cogs.mod")
+    await mod_bot.start(os.getenv("MOD_TOKEN"))
+
+
+# ===== MAIN =====
 async def main():
-    await load_cogs()
-    await bot.start(TOKEN)
+    await asyncio.gather(
+        start_log_bot(),
+        start_mod_bot()
+    )
 
-import asyncio
 asyncio.run(main())
