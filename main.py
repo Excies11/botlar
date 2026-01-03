@@ -38,9 +38,13 @@ async def start_mod_bot():
     await mod_bot.load_extension("cogs.mod")
     await mod_bot.start(os.getenv("MOD_TOKEN"))
 
+# ===== MLOG BOT =====
+mlog_bot = commands.Bot(command_prefix="?", intents=intents, help_command=None)
+
 async def start_mlog_bot():
-    await mod_bot.load_extension("cogs.mlog")
-    await mod_bot.start(os.getenv("MLOG_TOKEN"))
+    await mlog_bot.load_extension("cogs.mlog")
+    await mlog_bot.start(os.getenv("MLOG_TOKEN"))
+
 
 
 async def main():
