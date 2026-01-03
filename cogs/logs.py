@@ -2,7 +2,8 @@ import discord
 from discord.ext import commands
 from datetime import datetime
 
-LOG_CHANNEL_ID = 1409915479438393425  # sadece bu cog kullanır
+LOG_CHANNEL_ID = 1409915479438393425
+AUTO_ROLE_ID = 1409896783743549512
 
 class Logs(commands.Cog):
     def __init__(self, bot):
@@ -10,6 +11,17 @@ class Logs(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
+        # ---------- OTOROL ----------
+        role = member.guild.get_role(AUTO_ROLE_ID)
+        if role:
+            try:
+                await member.add_roles(role, reason="Otomatik rol")
+            except discord.Forbidden:
+                print("Rol verme yetkim yok!")
+            except Exception as e:
+                print(f"Otorol hatası: {e}")
+
+        # ---------- GİRİŞ LOG ----------
         channel = self.bot.get_channel(LOG_CHANNEL_ID)
         if channel is None:
             return
@@ -32,6 +44,7 @@ class Logs(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
+        # ---------- ÇIKIŞ LOG ----------
         channel = self.bot.get_channel(LOG_CHANNEL_ID)
         if channel is None:
             return
