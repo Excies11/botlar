@@ -1,49 +1,38 @@
-import os
 import discord
 from discord.ext import commands
 
-intents = discord.Intents.default()
-intents.members = True
-
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-TOKEN = os.getenv("LOG_TOKEN")
 LOG_CHANNEL_ID = 1409915479438393425
 OTOROL_ID = 1409896783743549512
 
-if TOKEN is None:
-    raise ValueError("LOG_TOKEN bulunamadı!")
+class Logs(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
 
-@bot.event
-async def on_ready():
-    print(f"{bot.user} | Log bot aktif")
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        channel = member.guild.get_channel(LOG_CHANNEL_ID)
+        if channel:
+            embed = discord.Embed(
+                title="🟢 Üye Katıldı",
+                description=f"{member.mention}",
+                color=discord.Color.green()
+            )
+            await channel.send(embed=embed)
 
-@bot.event
-async def on_member_join(member):
-    role = member.guild.get_role(OTOROL_ID)
-    if role:
-        await member.add_roles(role)
+        role = member.guild.get_role(OTOROL_ID)
+        if role:
+            await member.add_roles(role)
 
-    channel = bot.get_channel(LOG_CHANNEL_ID)
-    if channel:
-        embed = discord.Embed(
-            title="🟢 Sunucuya Katıldı",
-            description=f"{member.mention}",
-            color=0x2ecc71
-        )
-        embed.set_footer(text=f"ID: {member.id}")
-        await channel.send(embed=embed)
+    @commands.Cog.listener()
+    async def on_member_remove(self, member):
+        channel = member.guild.get_channel(LOG_CHANNEL_ID)
+        if channel:
+            embed = discord.Embed(
+                title="🔴 Üye Ayrıldı",
+                description=f"{member}",
+                color=discord.Color.red()
+            )
+            await channel.send(embed=embed)
 
-@bot.event
-async def on_member_remove(member):
-    channel = bot.get_channel(LOG_CHANNEL_ID)
-    if channel:
-        embed = discord.Embed(
-            title="🔴 Sunucudan Ayrıldı",
-            description=f"{member}",
-            color=0xe74c3c
-        )
-        embed.set_footer(text=f"ID: {member.id}")
-        await channel.send(embed=embed)
-
-bot.run(TOKEN)
+async def setup(bot):
+    await bot.add_cog(Logs(bot))
