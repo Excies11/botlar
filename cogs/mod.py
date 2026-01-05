@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
 
-class Mod(commands.Cog):
+LOG_CHANNEL_ID = 1409914069317718017  # mllog kanalı
+
+class MLog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -11,34 +13,57 @@ class Mod(commands.Cog):
         await self.bot.change_presence(
             status=discord.Status.online,
             activity=discord.Activity(
-                type=discord.ActivityType.watching,
-                name="Moderation"
+                type=discord.ActivityType.listening,
+                name="Server Logs"
             )
         )
-        print("🛡️ MOD COG YÜKLENDİ")
+        print("📜 MLOG COG YÜKLENDİ")
 
-    # ===== ÖRNEK MOD KOMUTLARI =====
+    # ===== MESSAGE LOG =====
+    @commands.Cog.listener()
+    async def on_message_delete(self, message: discord.Message):
+        if message.guild is None or message.author.bot:
+            return
 
-    @commands.command()
-    @commands.has_permissions(kick_members=True)
-    async def kick(self, ctx, member: discord.Member, *, reason="Sebep belirtilmedi"):
-        await member.kick(reason=reason)
-        await ctx.send(f"👢 {member.mention} kicklendi | {reason}")
+        channel = message.guild.get_channel(LOG_CHANNEL_ID)
+        if not channel:
+            return
 
-    @commands.command()
-    @commands.has_permissions(ban_members=True)
-    async def ban(self, ctx, member: discord.Member, *, reason="Sebep belirtilmedi"):
-        await member.ban(reason=reason)
-        await ctx.send(f"🔨 {member.mention} banlandı | {reason}")
+        embed = discord.Embed(
+            title="🗑️ Mesaj Silindi",
+            color=discord.Color.red()
+        )
+        embed.add_field(name="Kullanıcı", value=message.author.mention, inline=False)
+        embed.add_field(name="Kanal", value=message.channel.mention, inline=False)
+        embed.add_field(
+            name="Mesaj",
+            value=message.content[:1000] if message.content else "*Boş / embed*",
+            inline=False
+        )
 
-    @commands.command()
-    @commands.has_permissions(manage_messages=True)
-    async def clear(self, ctx, amount: int):
-        await ctx.channel.purge(limit=amount + 1)
-        msg = await ctx.send(f"🧹 {amount} mesaj silindi")
-        await msg.delete(delay=3)
+        await channel.send(embed=embed)
+
+    # ===== EDIT LOG =====
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        if before.author.bot or before.content == after.content:
+            return
+
+        channel = before.guild.get_channel(LOG_CHANNEL_ID)
+        if not channel:
+            return
+
+        embed = discord.Embed(
+            title="✏️ Mesaj Düzenlendi",
+            color=discord.Color.orange()
+        )
+        embed.add_field(name="Kullanıcı", value=before.author.mention, inline=False)
+        embed.add_field(name="Eski", value=before.content[:500], inline=False)
+        embed.add_field(name="Yeni", value=after.content[:500], inline=False)
+
+        await channel.send(embed=embed)
 
 
 # ===== EXTENSION SETUP (ŞART) =====
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Mod(bot))
+    await bot.add_cog(MLog(bot))
