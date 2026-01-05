@@ -53,6 +53,7 @@ async def start_mlog_bot():
     await mlog_bot.load_extension("cogs.mlog")
     await mlog_bot.start(os.getenv("MLOG_TOKEN"))
 
+
 # ================= MAIN =================
 async def main():
     await asyncio.gather(
