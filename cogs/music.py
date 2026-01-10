@@ -1,67 +1,46 @@
 import discord
 from discord.ext import commands
 import yt_dlp
-import requests
+import asyncio
 
-# ================= YDL / FFMPEG =================
 YDL_OPTS = {
-    "format": "bestaudio/best",
+    "format": "bestaudio",
     "quiet": True,
+    "default_search": "ytsearch",
     "noplaylist": True,
 }
 
 FFMPEG_OPTS = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
 
-# ================= SPOTIFY ALGILAMA =================
-def get_spotify_track(query: str):
-    if "open.spotify.com/track" not in query:
-        return None
-
-    try:
-        track_id = query.split("track/")[1].split("?")[0]
-        url = f"https://open.spotify.com/oembed?url=spotify:track:{track_id}"
-        r = requests.get(url, timeout=5)
-        if r.status_code != 200:
-            return None
-
-        data = r.json()
-        return f"{data['title']} {data['author_name']}"
-    except:
-        return None
-
-
-# ================= UI =================
 class MusicView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="⏸️ Duraklat", style=discord.ButtonStyle.secondary)
-    async def pause(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="⏸️", style=discord.ButtonStyle.secondary)
+    async def pause(self, interaction: discord.Interaction, _):
         vc = interaction.guild.voice_client
         if vc and vc.is_playing():
             vc.pause()
-            await interaction.response.send_message("⏸️ Duraklatıldı", ephemeral=True)
+            await interaction.response.send_message("Duraklatıldı", ephemeral=True)
 
-    @discord.ui.button(label="▶️ Devam", style=discord.ButtonStyle.success)
-    async def resume(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="▶️", style=discord.ButtonStyle.success)
+    async def resume(self, interaction: discord.Interaction, _):
         vc = interaction.guild.voice_client
         if vc and vc.is_paused():
             vc.resume()
-            await interaction.response.send_message("▶️ Devam ediyor", ephemeral=True)
+            await interaction.response.send_message("Devam ediyor", ephemeral=True)
 
-    @discord.ui.button(label="⏹️ Durdur", style=discord.ButtonStyle.danger)
-    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="⏹️", style=discord.ButtonStyle.danger)
+    async def stop(self, interaction: discord.Interaction, _):
         vc = interaction.guild.voice_client
         if vc:
             await vc.disconnect()
-            await interaction.response.send_message("⏹️ Müzik durduruldu", ephemeral=True)
+            await interaction.response.send_message("Durduruldu", ephemeral=True)
 
 
-# ================= COG =================
-class MusicUI(commands.Cog):
+class Music(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -71,10 +50,9 @@ class MusicUI(commands.Cog):
             activity=discord.Streaming(
                 name="SSD Discord 🤍",
                 url="https://twitch.tv/ssd"
-            ),
-            status=discord.Status.online
+            )
         )
-        print("🎵 MUSIC COG YÜKLENDİ")
+        print("🎵 MUSIC BOT READY")
 
     @commands.command()
     async def play(self, ctx, *, query: str):
@@ -86,12 +64,8 @@ class MusicUI(commands.Cog):
 
         vc = ctx.voice_client
 
-        # Spotify kontrolü
-        spotify_query = get_spotify_track(query)
-        search_query = spotify_query if spotify_query else query
-
         with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
-            info = ydl.extract_info(f"ytsearch:{search_query}", download=False)
+            info = ydl.extract_info(query, download=False)
             if "entries" in info:
                 info = info["entries"][0]
 
@@ -105,15 +79,15 @@ class MusicUI(commands.Cog):
 
         vc.play(source)
 
-        embed = discord.Embed(
-            title="🎶 Şimdi Çalıyor",
-            description=f"**{title}**",
-            color=discord.Color.green()
+        await ctx.send(
+            embed=discord.Embed(
+                title="🎶 Çalıyor",
+                description=title,
+                color=discord.Color.green()
+            ),
+            view=MusicView()
         )
 
-        await ctx.send(embed=embed, view=MusicView())
 
-
-# ================= SETUP =================
 async def setup(bot: commands.Bot):
-    await bot.add_cog(MusicUI(bot))
+    await bot.add_cog(Music(bot))
