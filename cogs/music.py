@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 import yt_dlp
-import asyncio
 
 YDL_OPTS = {
     "format": "bestaudio/best",
@@ -14,7 +13,33 @@ FFMPEG_OPTS = {
     "options": "-vn",
 }
 
-class Music(commands.Cog):
+class MusicView(discord.ui.View):
+    def __init__(self, ctx):
+        super().__init__(timeout=None)
+        self.ctx = ctx
+
+    @discord.ui.button(label="⏸️ Duraklat", style=discord.ButtonStyle.secondary)
+    async def pause(self, interaction: discord.Interaction, button: discord.ui.Button):
+        vc = interaction.guild.voice_client
+        if vc and vc.is_playing():
+            vc.pause()
+            await interaction.response.send_message("⏸️ Duraklatıldı", ephemeral=True)
+
+    @discord.ui.button(label="▶️ Devam", style=discord.ButtonStyle.success)
+    async def resume(self, interaction: discord.Interaction, button: discord.ui.Button):
+        vc = interaction.guild.voice_client
+        if vc and vc.is_paused():
+            vc.resume()
+            await interaction.response.send_message("▶️ Devam ediyor", ephemeral=True)
+
+    @discord.ui.button(label="⏹️ Durdur", style=discord.ButtonStyle.danger)
+    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+        vc = interaction.guild.voice_client
+        if vc:
+            await vc.disconnect()
+            await interaction.response.send_message("⏹️ Müzik durduruldu", ephemeral=True)
+
+class MusicUI(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -42,13 +67,14 @@ class Music(commands.Cog):
             vc.stop()
 
         vc.play(source)
-        await ctx.send(f"▶️ **{title}**")
 
-    @commands.command()
-    async def stop(self, ctx):
-        if ctx.voice_client:
-            await ctx.voice_client.disconnect()
-            await ctx.send("⏹️ Durduruldu")
+        embed = discord.Embed(
+            title="🎶 Şimdi Çalıyor",
+            description=f"**{title}**",
+            color=discord.Color.green()
+        )
+
+        await ctx.send(embed=embed, view=MusicView(ctx))
 
 async def setup(bot):
-    await bot.add_cog(Music(bot))
+    await bot.add_cog(MusicUI(bot))
