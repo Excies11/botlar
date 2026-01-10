@@ -27,7 +27,16 @@ class MLog(commands.Cog):
         embed.add_field(name="ID", value=member.id, inline=False)
 
         await channel.send(embed=embed)
-
+    # ================= READY =================
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.change_presence(
+            activity=discord.Streaming(
+                name="SSD Discord 🤍",
+                url="https://twitch.tv/ssd"
+            )
+        )
+        print("🎵 MUSIC BOT READY")
     # ===== MEMBER LEAVE =====
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
