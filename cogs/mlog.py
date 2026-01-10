@@ -10,15 +10,41 @@ class MLog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        await self.bot.change_presence(
-            activity=discord.Streaming(
-                name="SSD Discord 🤍",
-                url="https://twitch.tv/ssd"
-            )
-        )
-        print("🎵 MUSIC BOT READY")
+        print("🟣 MLOG BOT READY")
 
-    # ===== MESSAGE DELETE LOG =====
+    # ===== MEMBER JOIN =====
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        channel = member.guild.get_channel(LOG_CHANNEL_ID)
+        if not channel:
+            return
+
+        embed = discord.Embed(
+            title="➕ Sunucuya Katıldı",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="Kullanıcı", value=member.mention, inline=False)
+        embed.add_field(name="ID", value=member.id, inline=False)
+
+        await channel.send(embed=embed)
+
+    # ===== MEMBER LEAVE =====
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member):
+        channel = member.guild.get_channel(LOG_CHANNEL_ID)
+        if not channel:
+            return
+
+        embed = discord.Embed(
+            title="➖ Sunucudan Ayrıldı",
+            color=discord.Color.red()
+        )
+        embed.add_field(name="Kullanıcı", value=str(member), inline=False)
+        embed.add_field(name="ID", value=member.id, inline=False)
+
+        await channel.send(embed=embed)
+
+    # ===== MESSAGE DELETE =====
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
         if not message.guild or message.author.bot:
@@ -42,7 +68,7 @@ class MLog(commands.Cog):
 
         await channel.send(embed=embed)
 
-    # ===== MESSAGE EDIT LOG =====
+    # ===== MESSAGE EDIT =====
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
         if before.author.bot or before.content == after.content:
@@ -63,6 +89,5 @@ class MLog(commands.Cog):
         await channel.send(embed=embed)
 
 
-# ===== EXTENSION SETUP (ZORUNLU) =====
 async def setup(bot: commands.Bot):
     await bot.add_cog(MLog(bot))
