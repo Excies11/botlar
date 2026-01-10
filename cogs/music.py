@@ -12,6 +12,16 @@ FFMPEG_OPTS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
+@commands.Cog.listener()
+async def on_ready(self):
+    await self.bot.change_presence(
+        activity=discord.Streaming(
+            name="SSD Discord 🤍",
+            url="https://twitch.tv/ssd"
+        ),
+        status=discord.Status.online
+    )
+    print("🎵 MUSIC COG YÜKLENDİ")
 
 
 class MusicView(discord.ui.View):
