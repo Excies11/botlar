@@ -22,27 +22,6 @@ class Logs(commands.Cog):
     def get_log_channel(self, guild):
         return guild.get_channel(LOG_CHANNEL_ID)
 
-    # ================= MESSAGE CREATE =================
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot:
-            return
-
-        channel = self.get_log_channel(message.guild)
-        if not channel:
-            return
-
-        embed = discord.Embed(
-            title="📨 Mesaj Gönderildi",
-            color=discord.Color.green(),
-            timestamp=datetime.utcnow()
-        )
-        embed.add_field(name="Kullanıcı", value=message.author.mention)
-        embed.add_field(name="Kanal", value=message.channel.mention)
-        embed.add_field(name="Mesaj", value=message.content[:1000], inline=False)
-
-        await channel.send(embed=embed)
-
     # ================= MESSAGE DELETE =================
     @commands.Cog.listener()
     async def on_message_delete(self, message):
