@@ -59,7 +59,7 @@ class MusicUI(commands.Cog):
         await self.bot.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.listening,
-                name="Müzik 🎵"
+                name="SSD Discord 🤍"
             )
         )
         print("🎵 MUSIC COG YÜKLENDİ")
