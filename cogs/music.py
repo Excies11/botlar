@@ -3,60 +3,52 @@ from discord.ext import commands
 import yt_dlp
 import asyncio
 
-YDL_OPTIONS = {
+YDL_OPTS = {
     "format": "bestaudio/best",
-    "noplaylist": True,
     "quiet": True,
-    "default_search": "ytsearch",
+    "noplaylist": True,
 }
 
-FFMPEG_OPTIONS = {
+FFMPEG_OPTS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
-
 
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command()
-    async def play(self, ctx, *, search: str):
+    async def play(self, ctx, *, query: str):
         if not ctx.author.voice:
-            return await ctx.send("❌ Önce ses kanalına gir")
-
-        channel = ctx.author.voice.channel
+            return await ctx.send("❌ Ses kanalında değilsin")
 
         if not ctx.voice_client:
-            await channel.connect()
+            await ctx.author.voice.channel.connect()
 
         vc = ctx.voice_client
 
-        if vc.is_playing():
-            vc.stop()
-
-        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(search, download=False)
+        with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
+            info = ydl.extract_info(f"ytsearch:{query}", download=False)
             if "entries" in info:
                 info = info["entries"][0]
 
             url = info["url"]
             title = info.get("title", "Bilinmeyen")
 
-        source = await discord.FFmpegOpusAudio.from_probe(
-            url, **FFMPEG_OPTIONS
-        )
+        source = discord.FFmpegPCMAudio(url, **FFMPEG_OPTS)
+
+        if vc.is_playing():
+            vc.stop()
 
         vc.play(source)
-
-        await ctx.send(f"🎶 **Çalıyor:** {title}")
+        await ctx.send(f"▶️ **{title}**")
 
     @commands.command()
     async def stop(self, ctx):
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
             await ctx.send("⏹️ Durduruldu")
-
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
