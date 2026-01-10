@@ -17,8 +17,8 @@ class Moderation(commands.Cog):
     async def on_ready(self):
         await self.bot.change_presence(
             activity=discord.Activity(
-                type=discord.ActivityType.watching,
-                name="Sunucu Güvenliği"
+                type=discord.ActivityType.streaming,
+                name="SSD Discord 🤍"
             )
         )
         print("🛡️ MOD COG YÜKLENDİ")
