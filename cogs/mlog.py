@@ -8,17 +8,15 @@ class MLog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # ===== BOT READY =====
     @commands.Cog.listener()
     async def on_ready(self):
         await self.bot.change_presence(
-            status=discord.Status.online,
-            activity=discord.Activity(
-                type=discord.ActivityType.streaming,
-                name="SSD Discord 🤍"
+            activity=discord.Streaming(
+                name="SSD Discord 🤍",
+                url="https://twitch.tv/ssd"
             )
         )
-        print("📜 MLOG COG YÜKLENDİ")
+        print("🎵 MUSIC BOT READY")
 
     # ===== MESSAGE DELETE LOG =====
     @commands.Cog.listener()
