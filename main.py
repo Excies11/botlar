@@ -22,7 +22,7 @@ async def on_ready():
 async def start_log_bot():
     await log_bot.load_extension("cogs.logs")
     await log_bot.start(os.getenv("LOG_TOKEN"))
-
+print("selam")
 # ================= MOD BOT =================
 mod_bot = commands.Bot(
     command_prefix="!",
