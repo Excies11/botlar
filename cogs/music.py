@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands
 import yt_dlp
+import requests
+from bs4 import BeautifulSoup
 
 YDL_OPTS = {
     "format": "bestaudio",
@@ -15,7 +17,19 @@ FFMPEG_OPTS = {
 }
 
 
-# ================= UI BUTONLAR =================
+def get_spotify_title(url: str) -> str | None:
+    try:
+        r = requests.get(url, timeout=10)
+        soup = BeautifulSoup(r.text, "html.parser")
+        title = soup.title.string
+
+        # Spotify başlık formatı: "Yıldızlar - Çakal | Spotify"
+        title = title.replace("| Spotify", "").strip()
+        return title
+    except:
+        return None
+
+
 class MusicView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -25,26 +39,25 @@ class MusicView(discord.ui.View):
         vc = interaction.guild.voice_client
         if vc and vc.is_playing():
             vc.pause()
-            await interaction.response.send_message("⏸️ Duraklatıldı", ephemeral=True)
+            await interaction.response.send_message("Duraklatıldı", ephemeral=True)
 
     @discord.ui.button(label="▶️", style=discord.ButtonStyle.success)
     async def resume(self, interaction: discord.Interaction, _):
         vc = interaction.guild.voice_client
         if vc and vc.is_paused():
             vc.resume()
-            await interaction.response.send_message("▶️ Devam ediyor", ephemeral=True)
+            await interaction.response.send_message("Devam ediyor", ephemeral=True)
 
     @discord.ui.button(label="⏹️", style=discord.ButtonStyle.danger)
     async def stop(self, interaction: discord.Interaction, _):
         vc = interaction.guild.voice_client
         if vc:
             await vc.disconnect()
-            await interaction.response.send_message("⏹️ Durduruldu", ephemeral=True)
+            await interaction.response.send_message("Durduruldu", ephemeral=True)
 
 
-# ================= MUSIC COG =================
 class Music(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot):
         self.bot = bot
 
     @commands.Cog.listener()
@@ -57,7 +70,6 @@ class Music(commands.Cog):
         )
         print("🎵 MUSIC BOT READY")
 
-    # ================= PLAY =================
     @commands.command()
     async def play(self, ctx, *, query: str):
         if not ctx.author.voice:
@@ -68,28 +80,20 @@ class Music(commands.Cog):
 
         vc = ctx.voice_client
 
-        # 🎧 SPOTIFY LINK FIX
+        # 🔥 SPOTIFY LINK → BAŞLIK → YOUTUBE SEARCH
         if "open.spotify.com" in query:
-            try:
-                with yt_dlp.YoutubeDL({"quiet": True}) as ydl:
-                    info = ydl.extract_info(query, download=False)
-                    title = info.get("title")
+            title = get_spotify_title(query)
+            if not title:
+                return await ctx.send("❌ Spotify başlığı alınamadı")
+            query = title  # ARTIK NORMAL YAZI
 
-                if not title:
-                    return await ctx.send("❌ Spotify şarkı adı alınamadı")
-
-                query = f"ytsearch:{title}"
-            except Exception as e:
-                return await ctx.send("❌ Spotify linki çözülemedi")
-
-        # 🎶 YOUTUBE / SEARCH
         with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
             info = ydl.extract_info(query, download=False)
             if "entries" in info:
                 info = info["entries"][0]
 
             url = info["url"]
-            title = info.get("title", "Bilinmeyen")
+            title = info["title"]
 
         source = discord.FFmpegPCMAudio(url, **FFMPEG_OPTS)
 
@@ -101,13 +105,12 @@ class Music(commands.Cog):
         await ctx.send(
             embed=discord.Embed(
                 title="🎶 Şimdi Çalıyor",
-                description=f"**{title}**",
+                description=title,
                 color=discord.Color.green()
             ),
             view=MusicView()
         )
 
 
-# ================= SETUP =================
-async def setup(bot: commands.Bot):
+async def setup(bot):
     await bot.add_cog(Music(bot))
