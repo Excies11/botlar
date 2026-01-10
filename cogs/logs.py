@@ -11,13 +11,13 @@ class Logs(commands.Cog):
     # ================= READY =================
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f"🟢 LOG BOT AKTİF: {self.bot.user}")
         await self.bot.change_presence(
-            activity=discord.Activity(
-                type=discord.ActivityType.streaming,
-                name="SSD Discord 🤍"
+            activity=discord.Streaming(
+                name="SSD Discord 🤍",
+                url="https://twitch.tv/ssd"
             )
         )
+        print("🎵 MUSIC BOT READY")
 
     def get_log_channel(self, guild):
         return guild.get_channel(LOG_CHANNEL_ID)
