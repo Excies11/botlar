@@ -10,13 +10,12 @@ class Moderation(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         await self.bot.change_presence(
-            status=discord.Status.online,
-            activity=discord.Activity(
-                type=discord.ActivityType.streaming,
-                name="SSD Discord 🤍"
+            activity=discord.Streaming(
+                name="SSD Discord 🤍",
+                url="https://twitch.tv/ssd"
             )
         )
-        print("🛡️ MOD COG YÜKLENDİ")
+        print("🎵 MUSIC BOT READY")
 
     # ================= HELP =================
     @commands.command(name="help")
