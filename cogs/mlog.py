@@ -1,158 +1,70 @@
 import discord
 from discord.ext import commands
 
-MLLOG_CHANNEL_ID = 1409914069317718017
-await mod_bot.change_presence(
-    status=discord.Status.online,
-    activity=discord.Activity(
-        type=discord.ActivityType.watching,
-        name="SSD Private | SSD Log"
-    )
-)
+LOG_CHANNEL_ID = 1409914069317718017  # mllog kanalı
 
-class MLLog(commands.Cog):
-    def __init__(self, bot):
+
+class MLog(commands.Cog):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    def get_channel(self, guild):
-        return guild.get_channel(MLLOG_CHANNEL_ID)
-
-    # ================= MEMBER JOIN =================
+    # ===== BOT READY =====
     @commands.Cog.listener()
-    async def on_member_join(self, member):
-        ch = self.get_channel(member.guild)
-        if not ch:
-            return
-
-        embed = discord.Embed(
-            title="🟢 Üye Katıldı",
-            color=discord.Color.green()
+    async def on_ready(self):
+        await self.bot.change_presence(
+            status=discord.Status.online,
+            activity=discord.Activity(
+                type=discord.ActivityType.listening,
+                name="Server Logs"
+            )
         )
-        embed.add_field(name="Kullanıcı", value=f"{member} ({member.id})")
-        embed.set_thumbnail(url=member.display_avatar.url)
+        print("📜 MLOG COG YÜKLENDİ")
 
-        await ch.send(embed=embed)
-
-    # ================= MEMBER LEAVE =================
+    # ===== MESSAGE DELETE LOG =====
     @commands.Cog.listener()
-    async def on_member_remove(self, member):
-        ch = self.get_channel(member.guild)
-        if not ch:
-            return
-
-        embed = discord.Embed(
-            title="🔴 Üye Ayrıldı",
-            color=discord.Color.red()
-        )
-        embed.add_field(name="Kullanıcı", value=f"{member} ({member.id})")
-
-        await ch.send(embed=embed)
-
-    # ================= MESSAGE DELETE =================
-    @commands.Cog.listener()
-    async def on_message_delete(self, message):
+    async def on_message_delete(self, message: discord.Message):
         if not message.guild or message.author.bot:
             return
 
-        ch = self.get_channel(message.guild)
-        if not ch:
+        channel = message.guild.get_channel(LOG_CHANNEL_ID)
+        if not channel:
             return
 
         embed = discord.Embed(
             title="🗑️ Mesaj Silindi",
-            color=discord.Color.orange()
+            color=discord.Color.red()
         )
-        embed.add_field(name="Kullanıcı", value=message.author.mention)
-        embed.add_field(name="Kanal", value=message.channel.mention)
+        embed.add_field(name="Kullanıcı", value=message.author.mention, inline=False)
+        embed.add_field(name="Kanal", value=message.channel.mention, inline=False)
         embed.add_field(
             name="Mesaj",
-            value=message.content[:1000] if message.content else "İçerik yok",
+            value=message.content[:1000] if message.content else "*Boş / embed*",
             inline=False
         )
 
-        await ch.send(embed=embed)
+        await channel.send(embed=embed)
 
-    # ================= MESSAGE EDIT =================
+    # ===== MESSAGE EDIT LOG =====
     @commands.Cog.listener()
-    async def on_message_edit(self, before, after):
-        if not before.guild or before.author.bot:
-            return
-        if before.content == after.content:
+    async def on_message_edit(self, before: discord.Message, after: discord.Message):
+        if before.author.bot or before.content == after.content:
             return
 
-        ch = self.get_channel(before.guild)
-        if not ch:
+        channel = before.guild.get_channel(LOG_CHANNEL_ID)
+        if not channel:
             return
 
         embed = discord.Embed(
             title="✏️ Mesaj Düzenlendi",
-            color=discord.Color.blue()
+            color=discord.Color.orange()
         )
-        embed.add_field(name="Kullanıcı", value=before.author.mention)
-        embed.add_field(name="Kanal", value=before.channel.mention)
-        embed.add_field(
-            name="Önce",
-            value=before.content[:500] or "Yok",
-            inline=False
-        )
-        embed.add_field(
-            name="Sonra",
-            value=after.content[:500] or "Yok",
-            inline=False
-        )
+        embed.add_field(name="Kullanıcı", value=before.author.mention, inline=False)
+        embed.add_field(name="Eski", value=before.content[:500], inline=False)
+        embed.add_field(name="Yeni", value=after.content[:500], inline=False)
 
-        await ch.send(embed=embed)
-
-    # ================= BAN =================
-    @commands.Cog.listener()
-    async def on_member_ban(self, guild, user):
-        ch = self.get_channel(guild)
-        if not ch:
-            return
-
-        embed = discord.Embed(
-            title="🔨 Ban Atıldı",
-            color=discord.Color.dark_red()
-        )
-        embed.add_field(name="Kullanıcı", value=f"{user} ({user.id})")
-
-        await ch.send(embed=embed)
-
-    # ================= UNBAN =================
-    @commands.Cog.listener()
-    async def on_member_unban(self, guild, user):
-        ch = self.get_channel(guild)
-        if not ch:
-            return
-
-        embed = discord.Embed(
-            title="♻️ Ban Kaldırıldı",
-            color=discord.Color.green()
-        )
-        embed.add_field(name="Kullanıcı", value=f"{user} ({user.id})")
-
-        await ch.send(embed=embed)
-
-    # ================= TIMEOUT =================
-    @commands.Cog.listener()
-    async def on_member_update(self, before, after):
-        if before.communication_disabled_until != after.communication_disabled_until:
-            ch = self.get_channel(after.guild)
-            if not ch:
-                return
-
-            if after.communication_disabled_until:
-                title = "🔇 Timeout Verildi"
-                color = discord.Color.orange()
-            else:
-                title = "🔊 Timeout Kaldırıldı"
-                color = discord.Color.green()
-
-            embed = discord.Embed(title=title, color=color)
-            embed.add_field(name="Kullanıcı", value=after.mention)
-
-            await ch.send(embed=embed)
+        await channel.send(embed=embed)
 
 
-async def setup(bot):
-    await bot.add_cog(MLLog(bot))
+# ===== EXTENSION SETUP (ZORUNLU) =====
+async def setup(bot: commands.Bot):
+    await bot.add_cog(MLog(bot))
