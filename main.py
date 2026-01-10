@@ -29,6 +29,24 @@ mod_bot = commands.Bot(
     intents=intents,
     help_command=None
 )
+# ================= MUSIC BOT =================
+music_bot = commands.Bot(
+    command_prefix="!",
+    intents=intents,
+    help_command=None
+)
+
+@music_bot.event
+async def on_ready():
+    print(f"🎵 MUSIC BOT AKTİF: {music_bot.user}")
+
+async def start_music_bot():
+    await music_bot.load_extension("cogs.music")
+    await music_bot.start(os.getenv("MUSIC_TOKEN"))
+
+
+
+
 
 @mod_bot.event
 async def on_ready():
@@ -59,7 +77,8 @@ async def main():
     await asyncio.gather(
         start_log_bot(),
         start_mod_bot(),
-        start_mlog_bot()
+        start_mlog_bot(),
+        start_music_bot()
     )
 
 if __name__ == "__main__":
