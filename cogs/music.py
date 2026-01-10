@@ -13,6 +13,18 @@ FFMPEG_OPTS = {
     "options": "-vn",
 }
 
+    # ================= READY =================
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.change_presence(
+            status=discord.Status.online,
+            activity=discord.Activity(
+                type=discord.ActivityType.streaming,
+                name="SSD Discord 🤍"
+            )
+        )
+
+
 class MusicView(discord.ui.View):
     def __init__(self, ctx):
         super().__init__(timeout=None)
