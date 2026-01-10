@@ -12,15 +12,14 @@ FFMPEG_OPTS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
-
     # ================= READY =================
     @commands.Cog.listener()
-    async def on_ready(self):
-        await self.bot.change_presence(
-            status=discord.Status.online,
-            activity=discord.Activity(
-                type=discord.ActivityType.streaming,
-                name="SSD Discord 🤍"
+async def on_ready(self):
+    await self.bot.change_presence(
+        status=discord.Status.online,
+        activity=discord.Activity(
+            type=discord.ActivityType.streaming,
+            name="SSD Discord 🤍"
             )
         )
 
