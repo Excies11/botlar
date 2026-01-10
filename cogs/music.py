@@ -13,22 +13,10 @@ FFMPEG_OPTS = {
     "options": "-vn",
 }
 
-    # ================= READY =================
-@commands.Cog.listener()
-    async def on_ready(self):
-        await self.bot.change_presence(
-            status=discord.Status.online,
-            activity=discord.Activity(
-                type=discord.ActivityType.streaming,
-                name="SSD Discord 🤍"
-            )
-        )
-        print("🛡️ MOD COG YÜKLENDİ")
 
 class MusicView(discord.ui.View):
-    def __init__(self, ctx):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.ctx = ctx
 
     @discord.ui.button(label="⏸️ Duraklat", style=discord.ButtonStyle.secondary)
     async def pause(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -51,9 +39,20 @@ class MusicView(discord.ui.View):
             await vc.disconnect()
             await interaction.response.send_message("⏹️ Müzik durduruldu", ephemeral=True)
 
+
 class MusicUI(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.change_presence(
+            activity=discord.Activity(
+                type=discord.ActivityType.listening,
+                name="Müzik 🎵"
+            )
+        )
+        print("🎵 MUSIC COG YÜKLENDİ")
 
     @commands.command()
     async def play(self, ctx, *, query: str):
@@ -66,7 +65,7 @@ class MusicUI(commands.Cog):
         vc = ctx.voice_client
 
         with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
-            info = ydl.extract_info(f"ytsearch:{query}", download=False)
+            info = ydl.extract_info(query, download=False)
             if "entries" in info:
                 info = info["entries"][0]
 
@@ -86,7 +85,8 @@ class MusicUI(commands.Cog):
             color=discord.Color.green()
         )
 
-        await ctx.send(embed=embed, view=MusicView(ctx))
+        await ctx.send(embed=embed, view=MusicView())
 
-async def setup(bot):
+
+async def setup(bot: commands.Bot):
     await bot.add_cog(MusicUI(bot))
