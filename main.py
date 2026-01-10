@@ -30,6 +30,10 @@ mod_bot = commands.Bot(
     help_command=None
 )
 # ================= MUSIC BOT =================
+intents = discord.Intents.default()
+intents.message_content = True
+intents.voice_states = True
+
 music_bot = commands.Bot(
     command_prefix="!",
     intents=intents,
@@ -40,9 +44,13 @@ music_bot = commands.Bot(
 async def on_ready():
     print(f"🎵 MUSIC BOT AKTİF: {music_bot.user}")
 
-async def start_music_bot():
+async def main():
     await music_bot.load_extension("cogs.music")
     await music_bot.start(os.getenv("MUSIC_TOKEN"))
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
 
 
 
