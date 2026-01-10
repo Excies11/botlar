@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-LOG_CHANNEL_ID = 1409914069317718017  # mllog kanalı
+LOG_CHANNEL_ID = 1409915479438393425  # mllog kanalı
 
 
 class MLog(commands.Cog):
