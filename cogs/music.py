@@ -13,7 +13,7 @@ FFMPEG_OPTS = {
     "options": "-vn",
 }
     # ================= READY =================
-    @commands.Cog.listener()
+@commands.Cog.listener()
 async def on_ready(self):
     await self.bot.change_presence(
         status=discord.Status.online,
