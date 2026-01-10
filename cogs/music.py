@@ -58,7 +58,7 @@ class MusicUI(commands.Cog):
     async def on_ready(self):
         await self.bot.change_presence(
             activity=discord.Activity(
-                type=discord.ActivityType.listening,
+                type=discord.ActivityType.streaming,
                 name="SSD Discord 🤍"
             )
         )
