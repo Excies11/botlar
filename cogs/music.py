@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands
 import yt_dlp
+import requests
 
+# ================= YDL / FFMPEG =================
 YDL_OPTS = {
     "format": "bestaudio/best",
     "quiet": True,
@@ -12,18 +14,26 @@ FFMPEG_OPTS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
     "options": "-vn",
 }
-@commands.Cog.listener()
-async def on_ready(self):
-    await self.bot.change_presence(
-        activity=discord.Streaming(
-            name="SSD Discord 🤍",
-            url="https://twitch.tv/ssd"
-        ),
-        status=discord.Status.online
-    )
-    print("🎵 MUSIC COG YÜKLENDİ")
+
+# ================= SPOTIFY ALGILAMA =================
+def get_spotify_track(query: str):
+    if "open.spotify.com/track" not in query:
+        return None
+
+    try:
+        track_id = query.split("track/")[1].split("?")[0]
+        url = f"https://open.spotify.com/oembed?url=spotify:track:{track_id}"
+        r = requests.get(url, timeout=5)
+        if r.status_code != 200:
+            return None
+
+        data = r.json()
+        return f"{data['title']} {data['author_name']}"
+    except:
+        return None
 
 
+# ================= UI =================
 class MusicView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -50,6 +60,7 @@ class MusicView(discord.ui.View):
             await interaction.response.send_message("⏹️ Müzik durduruldu", ephemeral=True)
 
 
+# ================= COG =================
 class MusicUI(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -57,10 +68,11 @@ class MusicUI(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         await self.bot.change_presence(
-            activity=discord.Activity(
-                type=discord.ActivityType.streaming,
-                name="SSD Discord 🤍"
-            )
+            activity=discord.Streaming(
+                name="SSD Discord 🤍",
+                url="https://twitch.tv/ssd"
+            ),
+            status=discord.Status.online
         )
         print("🎵 MUSIC COG YÜKLENDİ")
 
@@ -74,8 +86,12 @@ class MusicUI(commands.Cog):
 
         vc = ctx.voice_client
 
+        # Spotify kontrolü
+        spotify_query = get_spotify_track(query)
+        search_query = spotify_query if spotify_query else query
+
         with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
-            info = ydl.extract_info(query, download=False)
+            info = ydl.extract_info(f"ytsearch:{search_query}", download=False)
             if "entries" in info:
                 info = info["entries"][0]
 
@@ -98,5 +114,6 @@ class MusicUI(commands.Cog):
         await ctx.send(embed=embed, view=MusicView())
 
 
+# ================= SETUP =================
 async def setup(bot: commands.Bot):
     await bot.add_cog(MusicUI(bot))
