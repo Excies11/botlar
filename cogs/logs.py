@@ -14,8 +14,8 @@ class Logs(commands.Cog):
         print(f"🟢 LOG BOT AKTİF: {self.bot.user}")
         await self.bot.change_presence(
             activity=discord.Activity(
-                type=discord.ActivityType.watching,
-                name="Sunucu Logları 👁️"
+                type=discord.ActivityType.streaming,
+                name="SSD Discord 🤍"
             )
         )
 
