@@ -54,6 +54,20 @@ async def on_ready():
 async def start_mlog_bot():
     await mlog_bot.load_extension("cogs.mlog")
     await mlog_bot.start(os.getenv("MLOG_TOKEN"))
+# ================= MINECRAFT BOT =================
+mc_bot = commands.Bot(
+    command_prefix="!",
+    intents=base_intents,
+    help_command=None
+)
+
+@mc_bot.event
+async def on_ready():
+    print(f"⛏️ MC BOT AKTİF: {mc_bot.user}")
+
+async def start_mc_bot():
+    await mc_bot.load_extension("cogs.minecraft")
+    await mc_bot.start(os.getenv("MC_TOKEN"))
 
 
 # ================= MUSIC BOT =================
@@ -77,13 +91,14 @@ async def start_music_bot():
 
 
 # ================= MAIN =================
-async def main():
-    await asyncio.gather(
-        start_log_bot(),
-        start_mod_bot(),
-        start_mlog_bot(),
-        start_music_bot()
-    )
+await asyncio.gather(
+    start_log_bot(),
+    start_mod_bot(),
+    start_mlog_bot(),
+    start_music_bot(),
+    start_mc_bot(),   # 👈 EKLENDİ
+)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
