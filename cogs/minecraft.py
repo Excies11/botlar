@@ -1,47 +1,39 @@
 from discord.ext import commands
-from aternos import Client
+from playwright.async_api import async_playwright
 import os
 
 ATERNOS_SESSION = os.getenv("ATERNOS_SESSION")
-ATERNOS_SERVER = os.getenv("ATERNOS_SERVER")
 
 class Minecraft(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot):
         self.bot = bot
-        self.client = Client()
-        self.server = None
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("⛏️ MINECRAFT BOT READY (COOKIE MODE)")
-        await self.login_with_cookie()
-
-    async def login_with_cookie(self):
-        self.client.session.cookies.set(
-            "ATERNOS_SESSION",
-            ATERNOS_SESSION,
-            domain=".aternos.org"
-        )
-
-        self.client.connect()
-        self.server = self.client.account.servers[ATERNOS_SERVER]
 
     @commands.command()
     async def server(self, ctx):
-        await ctx.send("⏳ Sunucu kontrol ediliyor...")
+        await ctx.send("⏳ Aternos açılıyor...")
 
-        if self.server.status == "online":
-            return await ctx.send("✅ Sunucu zaten **AÇIK**")
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context()
 
-        if self.server.status == "loading":
-            return await ctx.send("⏳ Sunucu **ZATEN BAŞLATILIYOR**")
+            # COOKIE EKLE
+            await context.add_cookies([{
+                "name": "ATERNOS_SESSION",
+                "value": ATERNOS_SESSION,
+                "domain": ".aternos.org",
+                "path": "/"
+            }])
 
-        self.server.start()
-        await ctx.send("🚀 Sunucu **SIRAYA ALINDI / BAŞLATILDI**")
+            page = await context.new_page()
+            await page.goto("https://aternos.org/servers/")
 
-    @commands.command()
-    async def status(self, ctx):
-        await ctx.send(f"🧠 Durum: **{self.server.status.upper()}**")
+            # SERVER START BUTONU
+            await page.wait_for_selector("button.start", timeout=20000)
+            await page.click("button.start")
 
-async def setup(bot: commands.Bot):
+            await browser.close()
+
+        await ctx.send("🚀 Sunucu **BAŞLATILDI / SIRAYA ALINDI**")
+
+async def setup(bot):
     await bot.add_cog(Minecraft(bot))
