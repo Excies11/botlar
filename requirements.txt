@@ -3,3 +3,4 @@ yt-dlp
 PyNaCl
 requests
 beautifulsoup4
+aternos.py
