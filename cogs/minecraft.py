@@ -4,69 +4,61 @@ import os
 import asyncio
 
 ATERNOS_SESSION = os.getenv("ATERNOS_SESSION")
-ATERNOS_SERVER = int(os.getenv("ATERNOS_SERVER"))  # INDEX (0,1,2...)
+ATERNOS_SERVER = int(os.getenv("ATERNOS_SERVER"))
 
 class Minecraft(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot):
         self.bot = bot
         self.client = Client()
         self.server = None
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print("⛏️ MINECRAFT BOT READY")
-        await self.login_with_cookie()
+        print("⛏️ Minecraft sistemi bağlanıyor...")
+        await asyncio.to_thread(self.login)
 
-    async def login_with_cookie(self):
+    def login(self):
         self.client.session.cookies.set(
             "ATERNOS_SESSION",
             ATERNOS_SESSION,
             domain=".aternos.org"
         )
-
-        # Aternos sync → blocking, o yüzden thread
-        await asyncio.to_thread(self.client.connect)
-
+        self.client.connect()
         self.server = self.client.account.servers[ATERNOS_SERVER]
-        print(f"🎮 Sunucu bağlandı: {self.server.name}")
+        print(f"✅ Aternos bağlı: {self.server.name}")
+
+    # ================= STATUS =================
+    @commands.command()
+    async def status(self, ctx):
+        await asyncio.to_thread(self.server.fetch)
+
+        durum = {
+            "online": "🟢 AÇIK",
+            "offline": "🔴 KAPALI",
+            "loading": "🟡 BAŞLATILIYOR",
+            "starting": "🟡 BAŞLATILIYOR",
+            "stopping": "🟠 DURDURULUYOR"
+        }.get(self.server.status, self.server.status)
+
+        await ctx.send(
+            f"⛏️ **Minecraft Sunucusu**\n"
+            f"📡 **{self.server.name}**\n"
+            f"📊 Durum: **{durum}**"
+        )
 
     # ================= START =================
-    @commands.command(name="server")
-    async def server_start(self, ctx):
-        await ctx.send("⏳ Sunucu kontrol ediliyor...")
-
+    @commands.command()
+    async def server(self, ctx):
         await asyncio.to_thread(self.server.fetch)
 
         if self.server.status == "online":
             return await ctx.send("✅ Sunucu zaten **AÇIK**")
 
         if self.server.status in ("loading", "starting"):
-            return await ctx.send("⏳ Sunucu **ZATEN BAŞLATILIYOR**")
+            return await ctx.send("⏳ Sunucu zaten **BAŞLATILIYOR**")
 
         await asyncio.to_thread(self.server.start)
-        await ctx.send("🚀 Sunucu **SIRAYA ALINDI / BAŞLATILDI**")
+        await ctx.send("🚀 Sunucu **SIRAYA ALINDI / BAŞLATILIYOR**")
 
-    # ================= STATUS =================
-    @commands.command(name="status")
-    async def server_status(self, ctx):
-        await asyncio.to_thread(self.server.fetch)
-
-        durum_map = {
-            "online": "🟢 AÇIK",
-            "offline": "🔴 KAPALI",
-            "loading": "🟡 BAŞLATILIYOR",
-            "starting": "🟡 BAŞLATILIYOR",
-            "stopping": "🟠 DURDURULUYOR"
-        }
-
-        durum = durum_map.get(self.server.status, self.server.status.upper())
-
-        await ctx.send(
-            f"⛏️ **Minecraft Sunucu Durumu**\n"
-            f"📡 Sunucu: **{self.server.name}**\n"
-            f"📊 Durum: **{durum}**"
-        )
-
-# ================= SETUP =================
-async def setup(bot: commands.Bot):
+async def setup(bot):
     await bot.add_cog(Minecraft(bot))
