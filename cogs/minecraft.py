@@ -1,5 +1,4 @@
 from discord.ext import commands
-from aternos import Client
 import os
 import asyncio
 
