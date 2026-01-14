@@ -1,62 +1,58 @@
 from discord.ext import commands
+import requests
+from bs4 import BeautifulSoup
 import os
-import asyncio
 
 ATERNOS_SESSION = os.getenv("ATERNOS_SESSION")
-ATERNOS_SERVER = int(os.getenv("ATERNOS_SERVER"))
+ATERNOS_SERVER = os.getenv("ATERNOS_SERVER")  # STRING KALACAK
+
+BASE_URL = "https://aternos.org"
+HEADERS = {"User-Agent": "Mozilla/5.0"}
 
 class Minecraft(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.client = Client()
-        self.server = None
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("⛏️ Minecraft sistemi bağlanıyor...")
-        await asyncio.to_thread(self.login)
-
-    def login(self):
-        self.client.session.cookies.set(
+        self.session = requests.Session()
+        self.session.headers.update(HEADERS)
+        self.session.cookies.set(
             "ATERNOS_SESSION",
             ATERNOS_SESSION,
             domain=".aternos.org"
         )
-        self.client.connect()
-        self.server = self.client.account.servers[ATERNOS_SERVER]
-        print(f"✅ Aternos bağlı: {self.server.name}")
 
-    # ================= STATUS =================
-    @commands.command()
-    async def status(self, ctx):
-        await asyncio.to_thread(self.server.fetch)
+    def get_status(self):
+        r = self.session.get(f"{BASE_URL}/server/{ATERNOS_SERVER}")
+        soup = BeautifulSoup(r.text, "html.parser")
 
-        durum = {
-            "online": "🟢 AÇIK",
-            "offline": "🔴 KAPALI",
-            "loading": "🟡 BAŞLATILIYOR",
-            "starting": "🟡 BAŞLATILIYOR",
-            "stopping": "🟠 DURDURULUYOR"
-        }.get(self.server.status, self.server.status)
+        status = soup.select_one("#statuslabel")
+        queue = soup.select_one("#queue")
 
-        await ctx.send(
-            f"⛏️ **Minecraft Sunucusu**\n"
-            f"📡 **{self.server.name}**\n"
-            f"📊 Durum: **{durum}**"
+        return (
+            status.text.strip() if status else "Bilinmiyor",
+            queue.text.strip() if queue else None
         )
 
-    # ================= START =================
+    def start_server(self):
+        self.session.post(f"{BASE_URL}/panel/ajax/start.php")
+
+    @commands.command()
+    async def status(self, ctx):
+        status, queue = self.get_status()
+
+        msg = f"⛏️ **Sunucu Durumu:** `{status}`"
+        if queue:
+            msg += f"\n📥 **Sıra:** {queue}"
+
+        await ctx.send(msg)
+
     @commands.command()
     async def server(self, ctx):
-        await asyncio.to_thread(self.server.fetch)
+        status, _ = self.get_status()
 
-        if self.server.status == "online":
+        if "Online" in status:
             return await ctx.send("✅ Sunucu zaten **AÇIK**")
 
-        if self.server.status in ("loading", "starting"):
-            return await ctx.send("⏳ Sunucu zaten **BAŞLATILIYOR**")
-
-        await asyncio.to_thread(self.server.start)
+        self.start_server()
         await ctx.send("🚀 Sunucu **SIRAYA ALINDI / BAŞLATILIYOR**")
 
 async def setup(bot):
