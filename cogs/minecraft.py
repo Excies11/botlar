@@ -1,8 +1,6 @@
 import os
 import discord
 from discord.ext import commands
-from aternos import Client
-
 ATERNOS_SESSION = os.getenv("ATERNOS_SESSION")
 ATERNOS_SERVER = os.getenv("ATERNOS_SERVER")  # STRING olacak
 
