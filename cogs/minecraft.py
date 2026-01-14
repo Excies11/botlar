@@ -1,64 +1,25 @@
-import os
-import discord
 from discord.ext import commands
-ATERNOS_SESSION = os.getenv("ATERNOS_SESSION")
-ATERNOS_SERVER = os.getenv("ATERNOS_SERVER")  # STRING olacak
+import discord
+
+ATERNOS_PANEL = "https://aternos.org/server/"
 
 class Minecraft(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot):
         self.bot = bot
-        self.client = Client()
-        self.server = None
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("⛏️ Minecraft COG hazır")
-        await self.login()
-
-    async def login(self):
-        if not ATERNOS_SESSION or not ATERNOS_SERVER:
-            print("❌ ATERNOS ENV eksik")
-            return
-
-        # Cookie ile giriş
-        self.client.session.cookies.set(
-            "ATERNOS_SESSION",
-            ATERNOS_SESSION,
-            domain=".aternos.org"
-        )
-
-        self.client.connect()
-
-        # SERVER ID STRING
-        self.server = self.client.account.servers[ATERNOS_SERVER]
-        print("✅ Aternos sunucu bağlandı")
 
     @commands.command()
     async def status(self, ctx):
-        if not self.server:
-            return await ctx.send("❌ Sunucuya bağlanılamadı")
-
-        await ctx.send(f"🧠 Sunucu durumu: **{self.server.status.upper()}**")
+        await ctx.send(
+            "🟡 **Sunucu durumu bot üzerinden alınamıyor**\n"
+            "📌 Aternos API olmadığı için manuel kontrol gerekli."
+        )
 
     @commands.command()
     async def server(self, ctx):
-        if not self.server:
-            return await ctx.send("❌ Sunucuya bağlanılamadı")
+        await ctx.send(
+            "🚀 Sunucuyu başlatmak için Aternos paneline git:\n"
+            f"{ATERNOS_PANEL}"
+        )
 
-        if self.server.status == "online":
-            return await ctx.send("✅ Sunucu zaten **AÇIK**")
-
-        if self.server.status == "loading":
-            return await ctx.send("⏳ Sunucu zaten **başlatılıyor**")
-
-        self.server.start()
-        await ctx.send("🚀 Sunucu **BAŞLATILDI / SIRAYA ALINDI**")
-
-    # TEST KOMUTU
-    @commands.command()
-    async def ping(self, ctx):
-        await ctx.send("🏓 pong")
-
-async def setup(bot: commands.Bot):
-    print("🧩 Minecraft COG yüklendi")
+async def setup(bot):
     await bot.add_cog(Minecraft(bot))
