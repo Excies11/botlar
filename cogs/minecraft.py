@@ -1,13 +1,16 @@
 from discord.ext import commands
 import requests
-from bs4 import BeautifulSoup
 import os
 
 ATERNOS_SESSION = os.getenv("ATERNOS_SESSION")
-ATERNOS_SERVER = os.getenv("ATERNOS_SERVER")  # STRING KALACAK
 
-BASE_URL = "https://aternos.org"
-HEADERS = {"User-Agent": "Mozilla/5.0"}
+STATUS_URL = "https://aternos.org/panel/ajax/status.php"
+START_URL = "https://aternos.org/panel/ajax/start.php"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "X-Requested-With": "XMLHttpRequest",
+}
 
 class Minecraft(commands.Cog):
     def __init__(self, bot):
@@ -21,27 +24,31 @@ class Minecraft(commands.Cog):
         )
 
     def get_status(self):
-        r = self.session.get(f"{BASE_URL}/server/{ATERNOS_SERVER}")
-        soup = BeautifulSoup(r.text, "html.parser")
+        r = self.session.get(STATUS_URL)
+        data = r.json()
 
-        status = soup.select_one("#statuslabel")
-        queue = soup.select_one("#queue")
+        status = data.get("status", "unknown")
+        queue = data.get("queue")
 
-        return (
-            status.text.strip() if status else "Bilinmiyor",
-            queue.text.strip() if queue else None
-        )
+        return status, queue
 
     def start_server(self):
-        self.session.post(f"{BASE_URL}/panel/ajax/start.php")
+        self.session.post(START_URL)
 
     @commands.command()
     async def status(self, ctx):
         status, queue = self.get_status()
 
-        msg = f"⛏️ **Sunucu Durumu:** `{status}`"
+        status_map = {
+            "online": "🟢 **AÇIK**",
+            "offline": "🔴 **KAPALI**",
+            "loading": "🟡 **BAŞLATILIYOR**",
+            "queue": "🟠 **SIRADA**"
+        }
+
+        msg = f"⛏️ Sunucu Durumu: {status_map.get(status, status)}"
         if queue:
-            msg += f"\n📥 **Sıra:** {queue}"
+            msg += f"\n📥 Sıra: **{queue}**"
 
         await ctx.send(msg)
 
@@ -49,11 +56,14 @@ class Minecraft(commands.Cog):
     async def server(self, ctx):
         status, _ = self.get_status()
 
-        if "Online" in status:
+        if status == "online":
             return await ctx.send("✅ Sunucu zaten **AÇIK**")
 
+        if status in ("loading", "queue"):
+            return await ctx.send("⏳ Sunucu zaten **başlatılıyor / sırada**")
+
         self.start_server()
-        await ctx.send("🚀 Sunucu **SIRAYA ALINDI / BAŞLATILIYOR**")
+        await ctx.send("🚀 Sunucu **SIRAYA ALINDI / BAŞLATILDI**")
 
 async def setup(bot):
     await bot.add_cog(Minecraft(bot))
