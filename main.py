@@ -14,7 +14,7 @@ bot = commands.Bot(
 
 @bot.event
 async def on_ready():
-    print(f"🟢 MINECRAFT BOT AKTİF: {bot.user}")
+    print(f"🟢 BOT AKTİF: {bot.user}")
 
 async def main():
     await bot.load_extension("cogs.minecraft")
