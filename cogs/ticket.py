@@ -2,89 +2,62 @@ import discord
 from discord.ext import commands
 
 class TicketView(discord.ui.View):
-    def __init__(self, category_id: int, staff_role_id: int):
+    def __init__(self, support_role_id):
         super().__init__(timeout=None)
-        self.category_id = category_id
-        self.staff_role_id = staff_role_id
+        self.support_role_id = support_role_id
 
-    @discord.ui.button(label="🎟️ Ticket Aç", style=discord.ButtonStyle.green)
-    async def open_ticket(self, interaction: discord.Interaction, _):
+    @discord.ui.button(label="🎫 Ticket Aç", style=discord.ButtonStyle.green)
+    async def open_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+
         guild = interaction.guild
         user = interaction.user
+        role = guild.get_role(self.support_role_id)
 
-        category = guild.get_channel(self.category_id)
+        category = discord.utils.get(guild.categories, name="🎫 Tickets")
         if not category:
-            return await interaction.response.send_message(
-                "❌ Ticket kategorisi bulunamadı", ephemeral=True
-            )
-
-        # Aynı kullanıcıdan 1 ticket
-        for ch in category.channels:
-            if ch.topic == str(user.id):
-                return await interaction.response.send_message(
-                    "❌ Zaten açık bir ticketin var", ephemeral=True
-                )
-
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-            guild.get_role(self.staff_role_id): discord.PermissionOverwrite(
-                view_channel=True, send_messages=True
-            ),
-        }
+            category = await guild.create_category("🎫 Tickets")
 
         channel = await guild.create_text_channel(
             name=f"ticket-{user.name}",
-            category=category,
-            overwrites=overwrites,
-            topic=str(user.id)
+            category=category
         )
 
-        await channel.send(
-            f"🎟️ {user.mention} ticket oluşturdu.\n"
-            f"Yetkililer sizinle ilgilenecek.\n\n"
-            f"`!close` yazarak ticketi kapatabilirsiniz."
-        )
-
-        await interaction.response.send_message(
-            f"✅ Ticket oluşturuldu: {channel.mention}",
-            ephemeral=True
-        )
-
-
-class Ticket(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
-        self.category_id = None
-        self.staff_role_id = None
-
-    # ===== SETUP =====
-    @commands.command()
-    @commands.has_permissions(administrator=True)
-    async def ticket_setup(self, ctx, category: discord.CategoryChannel, staff_role: discord.Role):
-        self.category_id = category.id
-        self.staff_role_id = staff_role.id
+        await channel.set_permissions(guild.default_role, view_channel=False)
+        await channel.set_permissions(user, view_channel=True, send_messages=True)
+        await channel.set_permissions(role, view_channel=True, send_messages=True)
 
         embed = discord.Embed(
-            title="🎟️ Destek Sistemi",
-            description="Aşağıdaki butona basarak ticket oluşturabilirsiniz.",
+            title="🎫 Ticket Açıldı",
+            description=f"{role.mention}\nKullanıcı: {user.mention}",
             color=discord.Color.green()
         )
 
-        await ctx.send(
-            embed=embed,
-            view=TicketView(self.category_id, self.staff_role_id)
+        await channel.send(embed=embed, view=CloseView())
+        await interaction.response.send_message("✅ Ticket oluşturuldu!", ephemeral=True)
+
+class CloseView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="🔒 Kapat", style=discord.ButtonStyle.red)
+    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.channel.delete()
+
+class Ticket(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command()
+    @commands.has_permissions(administrator=True)
+    async def ticket_setup(self, ctx, channel: discord.TextChannel, support_role: discord.Role):
+        embed = discord.Embed(
+            title="🎫 Destek Sistemi",
+            description="Ticket açmak için aşağıdaki butona bas.",
+            color=discord.Color.blurple()
         )
 
-    # ===== CLOSE =====
-    @commands.command()
-    async def close(self, ctx):
-        if not ctx.channel.topic:
-            return await ctx.send("❌ Bu kanal bir ticket değil")
+        await channel.send(embed=embed, view=TicketView(support_role.id))
+        await ctx.send("✅ Ticket paneli kuruldu")
 
-        await ctx.send("⏳ Ticket 5 saniye içinde kapanıyor...")
-        await ctx.channel.delete(delay=5)
-
-
-async def setup(bot: commands.Bot):
+async def setup(bot):
     await bot.add_cog(Ticket(bot))
