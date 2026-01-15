@@ -2,7 +2,15 @@ from discord.ext import commands
 import discord
 
 ATERNOS_PANEL = "https://aternos.org/server/"
-
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.change_presence(
+            activity=discord.Streaming(
+                name="SSD Discord 🤍",
+                url="https://twitch.tv/ssd"
+            )
+        )
+        print("🎵 MUSIC BOT READY")
 class Minecraft(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
