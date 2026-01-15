@@ -1,6 +1,14 @@
 import discord
 from discord.ext import commands
-
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.change_presence(
+            activity=discord.Streaming(
+                name="SSD Discord 🤍",
+                url="https://twitch.tv/ssd"
+            )
+        )
+        print("🎵 MUSIC BOT READY")
 class TicketView(discord.ui.View):
     def __init__(self, support_role_id):
         super().__init__(timeout=None)
