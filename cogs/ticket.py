@@ -1,12 +1,12 @@
 import discord
 from discord.ext import commands
 async def on_ready(self):
-await self.bot.change_presence(
-        activity=discord.Streaming(
-           name="SSD Discord 🤍",
-           url="https://twitch.tv/ssd"
-          )
-    )
+        await self.bot.change_presence(
+                activity=discord.Streaming(
+                   name="SSD Discord 🤍",
+                   url="https://twitch.tv/ssd"
+                  )
+            )        
         print("🎵 MUSIC BOT READY")
 
 
