@@ -1,33 +1,45 @@
-from discord.ext import commands
+import os
 import discord
+from discord.ext import commands
 
-ATERNOS_PANEL = "https://aternos.org/server/"
-    @commands.Cog.listener()
-    async def on_ready(self):
-        await self.bot.change_presence(
-            activity=discord.Streaming(
-                name="SSD Discord 🤍",
-                url="https://twitch.tv/ssd"
-            )
-        )
-        print("🎵 MUSIC BOT READY")
-class Minecraft(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+VOICE_CHANNEL_ID = 1464939407139147890  # SES KANALI ID
 
-    @commands.command()
-    async def status(self, ctx):
-        await ctx.send(
-            "🟡 **Sunucu durumu bot üzerinden alınamıyor**\n"
-            "📌 Aternos API olmadığı için manuel kontrol gerekli."
-        )
+intents = discord.Intents.default()
+intents.voice_states = True
 
-    @commands.command()
-    async def server(self, ctx):
-        await ctx.send(
-            "🚀 Sunucuyu başlatmak için Aternos paneline git:\n"
-            f"{ATERNOS_PANEL}"
-        )
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents,
+    help_command=None
+)
 
-async def setup(bot):
-    await bot.add_cog(Minecraft(bot))
+@bot.event
+async def on_ready():
+    print(f"🟢 BOT AKTİF: {bot.user}")
+
+    channel = bot.get_channel(VOICE_CHANNEL_ID)
+
+    if not channel:
+        print("❌ Ses kanalı bulunamadı")
+        return
+
+    if not isinstance(channel, discord.VoiceChannel):
+        print("❌ ID ses kanalı değil")
+        return
+
+    # Zaten bağlıysa tekrar bağlanmasın
+    if discord.utils.get(bot.voice_clients, guild=channel.guild):
+        print("🔊 Zaten ses kanalında")
+        return
+
+    try:
+        await channel.connect()
+        print("🔊 Ses kanalına girildi ve bekleniyor")
+    except Exception as e:
+        print("🔥 Ses kanalına girilemedi:", e)
+
+@bot.event
+async def on_disconnect():
+    print("🔴 BOT BAĞLANTI KOPTU")
+
+bot.run(os.getenv("TOKEN"))
