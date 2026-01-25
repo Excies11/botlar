@@ -62,21 +62,6 @@ class MusicView(discord.ui.View):
             await interaction.response.send_message("⏹️ Durduruldu", ephemeral=True)
 
 
-VOICE_CHANNEL_ID = 1464939407139147890  # BURAYA SES KANALI ID
-
-@bot.event
-async def on_ready():
-    print(f"🟢 {bot.user} AKTİF")
-
-    channel = bot.get_channel(VOICE_CHANNEL_ID)
-
-    if channel and isinstance(channel, discord.VoiceChannel):
-        try:
-            await channel.connect()
-            print("🔊 Ses kanalına girildi")
-        except Exception as e:
-            print("❌ Ses kanalına girilemedi:", e)
-
 
 
 
