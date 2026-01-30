@@ -23,7 +23,7 @@ async def on_ready():
         print("🔊 Ses kanalına girildi")
 
 async def main():
-    for cog in ["moderation", "music", "ticket", "logs"]:
+    for cog in ["mod", "music", "ticket", "logs"]:
         await bot.load_extension(f"cogs.{cog}")
 
     await bot.start(os.getenv("DISCORD_TOKEN"))
