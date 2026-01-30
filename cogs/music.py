@@ -1,136 +1,164 @@
 import discord
 from discord.ext import commands
 import yt_dlp
-import requests
-from bs4 import BeautifulSoup
+import asyncio
 
-YDL_OPTS = {
-    "format": "bestaudio",
+YTDL_OPTIONS = {
+    "format": "bestaudio/best",
     "quiet": True,
+    "extract_flat": False,
     "default_search": "ytsearch",
-    "noplaylist": True,
+    "source_address": "0.0.0.0"
 }
 
-FFMPEG_OPTS = {
+FFMPEG_OPTIONS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-    "options": "-vn",
+    "options": "-vn"
 }
 
-
-def get_spotify_title(url: str):
-    try:
-        r = requests.get(url, timeout=10)
-        soup = BeautifulSoup(r.text, "html.parser")
-        title = soup.title.string.replace("| Spotify", "").strip()
-        return title
-    except:
-        return None
-
-
-class MusicView(discord.ui.View):
-    def __init__(self, cog):
-        super().__init__(timeout=None)
-        self.cog = cog
-
-    @discord.ui.button(label="⏸️", style=discord.ButtonStyle.secondary)
-    async def pause(self, interaction: discord.Interaction, _):
-        vc = interaction.guild.voice_client
-        if vc and vc.is_playing():
-            vc.pause()
-            await interaction.response.send_message("⏸️ Duraklatıldı", ephemeral=True)
-
-    @discord.ui.button(label="▶️", style=discord.ButtonStyle.success)
-    async def resume(self, interaction: discord.Interaction, _):
-        vc = interaction.guild.voice_client
-        if vc and vc.is_paused():
-            vc.resume()
-            await interaction.response.send_message("▶️ Devam ediyor", ephemeral=True)
-
-    @discord.ui.button(label="🔁 Loop", style=discord.ButtonStyle.primary)
-    async def loop(self, interaction: discord.Interaction, _):
-        self.cog.loop = not self.cog.loop
-        durum = "AÇIK 🔁" if self.cog.loop else "KAPALI ❌"
-        await interaction.response.send_message(f"Loop {durum}", ephemeral=True)
-
-    @discord.ui.button(label="⏹️", style=discord.ButtonStyle.danger)
-    async def stop(self, interaction: discord.Interaction, _):
-        vc = interaction.guild.voice_client
-        if vc:
-            self.cog.loop = False
-            vc.stop()
-            await vc.disconnect()
-            await interaction.response.send_message("⏹️ Durduruldu", ephemeral=True)
-
-
-
-
+ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
 
 
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.queue = []
         self.loop = False
-        self.current_source = None
+        self.current = None
+        self.volume = 0.5
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        await self.bot.change_presence(
-            activity=discord.Streaming(
-                name="SSD Discord 🤍",
-                url="https://twitch.tv/ssd"
-            )
-        )
-        print("🎵 MUSIC BOT READY")
-
-    def play_next(self, vc):
-        if self.loop and self.current_source:
-            vc.play(
-                discord.FFmpegPCMAudio(self.current_source, **FFMPEG_OPTS),
-                after=lambda e: self.play_next(vc)
-            )
-
-    @commands.command()
-    async def play(self, ctx, *, query: str):
-        if not ctx.author.voice:
+    # ===================== UTILS =====================
+    async def join_channel(self, ctx):
+        if ctx.author.voice is None:
             return await ctx.send("❌ Ses kanalında değilsin")
 
-        if not ctx.voice_client:
+        if ctx.voice_client is None:
             await ctx.author.voice.channel.connect()
+        else:
+            await ctx.voice_client.move_to(ctx.author.voice.channel)
 
-        vc = ctx.voice_client
+    async def play_next(self, ctx):
+        if not self.queue and not self.loop:
+            await ctx.voice_client.disconnect()
+            return
 
-        if "open.spotify.com" in query:
-            title = get_spotify_title(query)
-            if not title:
-                return await ctx.send("❌ Spotify başlığı alınamadı")
-            query = title
+        if self.loop and self.current:
+            source = self.current
+        else:
+            source = self.queue.pop(0)
+            self.current = source
 
-        with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
-            info = ydl.extract_info(query, download=False)
-            if "entries" in info:
-                info = info["entries"][0]
-
-            self.current_source = info["url"]
-            title = info["title"]
-
-        source = discord.FFmpegPCMAudio(self.current_source, **FFMPEG_OPTS)
-
-        if vc.is_playing() or vc.is_paused():
-            vc.stop()
-
-        vc.play(
+        ctx.voice_client.play(
             source,
-            after=lambda e: self.play_next(vc)
+            after=lambda e: asyncio.run_coroutine_threadsafe(
+                self.play_next(ctx), self.bot.loop
+            )
+        )
+        ctx.voice_client.source.volume = self.volume
+
+    # ===================== COMMANDS =====================
+    @commands.command()
+    async def join(self, ctx):
+        await self.join_channel(ctx)
+        await ctx.send("🔊 Ses kanalına girdim")
+
+    @commands.command()
+    async def leave(self, ctx):
+        if ctx.voice_client:
+            await ctx.voice_client.disconnect()
+            self.queue.clear()
+            self.current = None
+            await ctx.send("👋 Çıktım")
+
+    @commands.command()
+    async def play(self, ctx, *, search):
+        await self.join_channel(ctx)
+
+        msg = await ctx.send("🔎 Aranıyor...")
+
+        data = ytdl.extract_info(search, download=False)
+
+        if "entries" in data:
+            data = data["entries"][0]
+
+        url = data["url"]
+        title = data["title"]
+        duration = data.get("duration", 0)
+
+        source = discord.PCMVolumeTransformer(
+            discord.FFmpegPCMAudio(url, **FFMPEG_OPTIONS),
+            volume=self.volume
         )
 
-        await ctx.send(
-            embed=discord.Embed(
-                title="🎶 Şimdi Çalıyor",
-                description=title,
-                color=discord.Color.green()
-            ),
-            view=MusicView(self)
+        self.queue.append(source)
+
+        embed = discord.Embed(
+            title="🎵 Kuyruğa Eklendi",
+            description=f"**{title}**",
+            color=discord.Color.green()
         )
+        embed.add_field(name="Süre", value=f"{duration//60}:{duration%60:02d}")
+        await msg.edit(content=None, embed=embed)
+
+        if not ctx.voice_client.is_playing():
+            await self.play_next(ctx)
+
+    @commands.command()
+    async def skip(self, ctx):
+        if ctx.voice_client and ctx.voice_client.is_playing():
+            ctx.voice_client.stop()
+            await ctx.send("⏭ Şarkı geçildi")
+
+    @commands.command()
+    async def stop(self, ctx):
+        if ctx.voice_client:
+            ctx.voice_client.stop()
+            self.queue.clear()
+            self.current = None
+            await ctx.send("⏹ Müzik durduruldu")
+
+    @commands.command()
+    async def pause(self, ctx):
+        if ctx.voice_client.is_playing():
+            ctx.voice_client.pause()
+            await ctx.send("⏸ Duraklatıldı")
+
+    @commands.command()
+    async def resume(self, ctx):
+        if ctx.voice_client.is_paused():
+            ctx.voice_client.resume()
+            await ctx.send("▶️ Devam ediyor")
+
+    @commands.command()
+    async def volume(self, ctx, vol: int):
+        if 0 <= vol <= 100:
+            self.volume = vol / 100
+            if ctx.voice_client and ctx.voice_client.source:
+                ctx.voice_client.source.volume = self.volume
+            await ctx.send(f"🔊 Ses: %{vol}")
+        else:
+            await ctx.send("❌ 0-100 arası gir")
+
+    @commands.command()
+    async def loop(self, ctx):
+        self.loop = not self.loop
+        await ctx.send(f"🔁 Loop: {'Açık' if self.loop else 'Kapalı'}")
+
+    @commands.command()
+    async def queue(self, ctx):
+        if not self.queue:
+            return await ctx.send("📭 Kuyruk boş")
+
+        desc = ""
+        for i, _ in enumerate(self.queue[:10], start=1):
+            desc += f"{i}. Şarkı\n"
+
+        embed = discord.Embed(
+            title="🎶 Müzik Kuyruğu",
+            description=desc,
+            color=discord.Color.blurple()
+        )
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):
