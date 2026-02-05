@@ -9,7 +9,15 @@ class Moderation(commands.Cog):
     async def kick(self, ctx, member, *, reason="Yok"):
         await member.kick(reason=reason)
         await ctx.send(f"👢 {member} atıldı | {reason}")
-
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.change_presence(
+            activity=discord.Streaming(
+                name="SSD Discord 🤍",
+                url="https://twitch.tv/ssd"
+            )
+        )
+        print("🎵 MUSIC BOT READY")
     @commands.command()
     @commands.has_permissions(ban_members=True)
     async def ban(self, ctx, member, *, reason="Yok"):
