@@ -23,10 +23,14 @@ async def on_ready():
         print("🔊 Ses kanalına girildi")
 
 async def main():
-    for cog in ["mod", "music", "ticket", "logs"]:
-        await bot.load_extension(f"cogs.{cog}")
-
-    await bot.start(os.getenv("DISCORD_TOKEN"))
+    await asyncio.gather(
+        start_bot(log_bot,   os.getenv("LOG_TOKEN"),   "LOG BOT",   "cogs.logs"),
+        start_bot(mod_bot,   os.getenv("MOD_TOKEN"),   "MOD BOT",   "cogs.mod"),
+        start_bot(mlog_bot,  os.getenv("MLOG_TOKEN"),  "MLOG BOT",  "cogs.mlog"),
+        start_bot(music_bot, os.getenv("MUSIC_TOKEN"), "MUSIC BOT", "cogs.music"),
+        start_bot(mc_bot,    os.getenv("MC_TOKEN"),    "MC BOT",    "cogs.minecraft"),
+        start_bot(ticket_bot,os.getenv("TICKET_TOKEN"),"TICKET",    "cogs.ticket"),
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())
