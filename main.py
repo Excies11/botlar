@@ -47,13 +47,15 @@ async def main():
             log_bot,
             os.getenv("LOG_TOKEN"),
             "LOG BOT",
-            "cogs.logs"
+            "cogs.logs",
+            voice_channel_id=1464939407139147890
         ),
         start_bot(
             mod_bot,
             os.getenv("MOD_TOKEN"),
             "MOD BOT",
-            "cogs.mod"
+            "cogs.mod",
+            voice_channel_id=1464939407139147890
         ),
         start_bot(
             mlog_bot,
@@ -67,19 +69,22 @@ async def main():
             os.getenv("MUSIC_TOKEN"),
             "MUSIC BOT",
             "cogs.music",
+            voice_channel_id=1464939407139147890
   # 👈 music bot ses kanalına girer
         ),
         start_bot(
             mc_bot,
             os.getenv("MC_TOKEN"),
             "MC BOT",
-            "cogs.minecraft"
+            "cogs.minecraft",
+            voice_channel_id=1464939407139147890
         ),
         start_bot(
             ticket_bot,
             os.getenv("TICKET_TOKEN"),
             "TICKET BOT",
-            "cogs.ticket"
+            "cogs.ticket",
+            voice_channel_id=1464939407139147890
         ),
     )
 
