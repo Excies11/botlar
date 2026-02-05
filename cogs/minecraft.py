@@ -1,121 +1,91 @@
 import discord
 from discord.ext import commands
-from discord.ui import View, Button
 import random
+import time
 import aiosqlite
 
 DB = "economy.db"
 
-def hand_value(hand):
-    total = sum(hand)
-    aces = hand.count(11)
-    while total > 21 and aces:
-        total -= 10
-        aces -= 1
-    return total
-
-class BlackjackView(View):
-    def __init__(self, ctx, bet, player, dealer):
-        super().__init__(timeout=60)
-        self.ctx = ctx
-        self.bet = bet
-        self.player = player
-        self.dealer = dealer
-        self.finished = False
-
-    async def end_game(self, interaction, result):
-        async with aiosqlite.connect(DB) as db:
-            if result == "win":
-                await db.execute(
-                    "UPDATE users SET balance = balance + ? WHERE user=? AND guild=?",
-                    (self.bet, self.ctx.author.id, self.ctx.guild.id)
-                )
-                msg = "🎉 **Kazandın!**"
-            elif result == "lose":
-                await db.execute(
-                    "UPDATE users SET balance = balance - ? WHERE user=? AND guild=?",
-                    (self.bet, self.ctx.author.id, self.ctx.guild.id)
-                )
-                msg = "💀 **Kaybettin!**"
-            else:
-                msg = "➖ **Berabere**"
-
-            await db.commit()
-
-        self.finished = True
-        self.clear_items()
-
-        await interaction.response.edit_message(
-            content=(
-                f"🃏 **Blackjack Bitti**\n"
-                f"Sen: {hand_value(self.player)} {self.player}\n"
-                f"Bot: {hand_value(self.dealer)} {self.dealer}\n\n{msg}"
-            ),
-            view=self
-        )
-
-    @discord.ui.button(label="➕ Hit", style=discord.ButtonStyle.green)
-    async def hit(self, interaction: discord.Interaction, _):
-        if interaction.user != self.ctx.author:
-            return await interaction.response.send_message("❌ Sana ait değil", ephemeral=True)
-
-        self.player.append(random.choice([2,3,4,5,6,7,8,9,10,11]))
-        if hand_value(self.player) > 21:
-            return await self.end_game(interaction, "lose")
-
-        await interaction.response.edit_message(
-            content=f"🃏 Elin: {self.player} ({hand_value(self.player)})",
-            view=self
-        )
-
-    @discord.ui.button(label="⏹ Stand", style=discord.ButtonStyle.red)
-    async def stand(self, interaction: discord.Interaction, _):
-        if interaction.user != self.ctx.author:
-            return await interaction.response.send_message("❌ Sana ait değil", ephemeral=True)
-
-        while hand_value(self.dealer) < 17:
-            self.dealer.append(random.choice([2,3,4,5,6,7,8,9,10,11]))
-
-        p = hand_value(self.player)
-        d = hand_value(self.dealer)
-
-        if d > 21 or p > d:
-            await self.end_game(interaction, "win")
-        elif p < d:
-            await self.end_game(interaction, "lose")
-        else:
-            await self.end_game(interaction, "draw")
-
-class Blackjack(commands.Cog):
+class Economy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        bot.loop.create_task(self.init_db())
 
-    @commands.command()
-    async def bj(self, ctx, bet: int):
-        if bet <= 0:
-            return await ctx.send("❌ Bahis geçersiz")
+    async def init_db(self):
+        async with aiosqlite.connect(DB) as db:
+            await db.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY,
+                balance INTEGER DEFAULT 0,
+                last_daily INTEGER DEFAULT 0
+            )
+            """)
+            await db.commit()
 
+    async def get_user(self, user_id):
         async with aiosqlite.connect(DB) as db:
             cur = await db.execute(
-                "SELECT balance FROM users WHERE user=? AND guild=?",
-                (ctx.author.id, ctx.guild.id)
+                "SELECT balance, last_daily FROM users WHERE user_id=?",
+                (user_id,)
             )
             row = await cur.fetchone()
+            if row is None:
+                await db.execute(
+                    "INSERT INTO users (user_id, balance, last_daily) VALUES (?, 0, 0)",
+                    (user_id,)
+                )
+                await db.commit()
+                return 0, 0
+            return row
 
-        if not row or row[0] < bet:
-            return await ctx.send("❌ Yetersiz bakiye")
+    @commands.command()
+    async def bal(self, ctx):
+        bal, _ = await self.get_user(ctx.author.id)
+        await ctx.send(f"💰 Bakiyen: **{bal} coin**")
 
-        deck = [2,3,4,5,6,7,8,9,10,10,10,11] * 4
-        random.shuffle(deck)
+    @commands.command()
+    async def daily(self, ctx):
+        bal, last = await self.get_user(ctx.author.id)
+        now = int(time.time())
 
-        player = [deck.pop(), deck.pop()]
-        dealer = [deck.pop(), deck.pop()]
+        if now - last < 86400:
+            return await ctx.send("⏳ Daily zaten alındı")
 
-        view = BlackjackView(ctx, bet, player, dealer)
-        await ctx.send(
-            f"🃏 **Blackjack**\nElin: {player} ({hand_value(player)})",
-            view=view
-        )
+        reward = random.randint(300, 700)
+
+        async with aiosqlite.connect(DB) as db:
+            await db.execute(
+                "UPDATE users SET balance=?, last_daily=? WHERE user_id=?",
+                (bal + reward, now, ctx.author.id)
+            )
+            await db.commit()
+
+        await ctx.send(f"🎁 Günlük ödül: **{reward} coin**")
+
+    @commands.command()
+    async def cf(self, ctx, amount: int):
+        bal, _ = await self.get_user(ctx.author.id)
+        if amount <= 0 or amount > bal:
+            return await ctx.send("❌ Geçersiz miktar")
+
+        win = random.choice([True, False])
+
+        async with aiosqlite.connect(DB) as db:
+            if win:
+                bal += amount
+                msg = f"🪙 Kazandın! +{amount}"
+            else:
+                bal -= amount
+                msg = f"💀 Kaybettin! -{amount}"
+
+            await db.execute(
+                "UPDATE users SET balance=? WHERE user_id=?",
+                (bal, ctx.author.id)
+            )
+            await db.commit()
+
+        await ctx.send(msg)
+
 
 async def setup(bot):
-    await bot.add_cog(Blackjack(bot))
+    await bot.add_cog(Economy(bot))
