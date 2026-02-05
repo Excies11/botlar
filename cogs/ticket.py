@@ -1,14 +1,14 @@
 import discord
 from discord.ext import commands
-    @commands.Cog.listener()
-    async def on_ready(self):
-        await self.bot.change_presence(
-            activity=discord.Streaming(
-                name="SSD Discord 🤍",
-                url="https://twitch.tv/ssd"
-            )
+@commands.Cog.listener()
+async def on_ready(self):
+    await self.bot.change_presence(
+        activity=discord.Streaming(
+            name="SSD Discord 🤍",
+            url="https://twitch.tv/ssd"
         )
-        print("🎵 MUSIC BOT READY")
+    )
+    print("🎵 MUSIC BOT READY")
 
 
 class TicketView(discord.ui.View):
