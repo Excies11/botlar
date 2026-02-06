@@ -1,149 +1,125 @@
 import discord
 from discord.ext import commands
 import random
-import time
-import aiosqlite
+import json
+import os
+from datetime import datetime, timedelta
 
-DB_PATH = "owo.db"
-DAILY_COOLDOWN = 86400  # 24 saat
+DATA_FILE = "owo_data.json"
 
-class OwO(commands.Cog):
+
+def load_data():
+    if not os.path.exists(DATA_FILE):
+        return {}
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_data(data):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
+
+class Owo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        bot.loop.create_task(self.init_db())
+        self.data = load_data()
 
-    async def init_db(self):
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY,
-                balance INTEGER DEFAULT 0,
-                last_daily INTEGER DEFAULT 0
-            )
-            """)
-            await db.commit()
+    # ========= YARDIMCI =========
+    def get_user(self, user_id):
+        uid = str(user_id)
+        if uid not in self.data:
+            self.data[uid] = {
+                "money": 100,
+                "last_daily": None
+            }
+        return self.data[uid]
 
-    async def get_user(self, user_id: int):
-        async with aiosqlite.connect(DB_PATH) as db:
-            cur = await db.execute(
-                "SELECT balance, last_daily FROM users WHERE user_id = ?",
-                (user_id,)
-            )
-            row = await cur.fetchone()
-            if row is None:
-                await db.execute(
-                    "INSERT INTO users (user_id, balance, last_daily) VALUES (?, 0, 0)",
-                    (user_id,)
-                )
-                await db.commit()
-                return 0, 0
-            return row
-
-    async def update_balance(self, user_id: int, new_balance: int):
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute(
-                "UPDATE users SET balance = ? WHERE user_id = ?",
-                (new_balance, user_id)
-            )
-            await db.commit()
-
-    # ================== COMMANDS ==================
-
+    # ========= BALANCE =========
     @commands.command()
-    async def bal(self, ctx):
-        bal, _ = await self.get_user(ctx.author.id)
-        await ctx.send(f"💰 **Bakiyen:** `{bal}` coin")
+    async def balance(self, ctx):
+        user = self.get_user(ctx.author.id)
+        await ctx.send(f"💰 **{ctx.author.name}** bakiyesi: `{user['money']}` coin")
 
+    # ========= DAILY =========
     @commands.command()
     async def daily(self, ctx):
-        bal, last = await self.get_user(ctx.author.id)
-        now = int(time.time())
+        user = self.get_user(ctx.author.id)
+        now = datetime.utcnow()
 
-        if now - last < DAILY_COOLDOWN:
-            kalan = DAILY_COOLDOWN - (now - last)
-            saat = kalan // 3600
-            dk = (kalan % 3600) // 60
-            return await ctx.send(f"⏳ Daily için **{saat}s {dk}dk** kaldı")
+        if user["last_daily"]:
+            last = datetime.fromisoformat(user["last_daily"])
+            if now - last < timedelta(hours=24):
+                kalan = timedelta(hours=24) - (now - last)
+                return await ctx.send(
+                    f"⏳ Daily için `{kalan.seconds//3600}s {kalan.seconds%3600//60}dk` kaldı"
+                )
 
-        reward = random.randint(500, 1000)
-
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute(
-                "UPDATE users SET balance = ?, last_daily = ? WHERE user_id = ?",
-                (bal + reward, now, ctx.author.id)
-            )
-            await db.commit()
+        reward = random.randint(200, 400)
+        user["money"] += reward
+        user["last_daily"] = now.isoformat()
+        save_data(self.data)
 
         await ctx.send(f"🎁 Daily aldın! **+{reward} coin**")
 
+    # ========= HUNT =========
     @commands.command()
-    async def cf(self, ctx, amount: int):
-        bal, _ = await self.get_user(ctx.author.id)
+    async def hunt(self, ctx):
+        user = self.get_user(ctx.author.id)
+
+        outcomes = [
+            ("🐱 Kedi yakaladın", random.randint(50, 120)),
+            ("🐶 Köpek çıktı", random.randint(30, 80)),
+            ("🦊 Tilki kaçtı", -random.randint(20, 60)),
+            ("☠️ Tuzak!", -random.randint(50, 100))
+        ]
+
+        result, amount = random.choice(outcomes)
+        user["money"] = max(0, user["money"] + amount)
+        save_data(self.data)
+
+        await ctx.send(f"{result} → `{amount}` coin")
+
+    # ========= COINFLIP =========
+    @commands.command()
+    async def cf(self, ctx, amount: int, choice: str):
+        user = self.get_user(ctx.author.id)
 
         if amount <= 0:
             return await ctx.send("❌ Geçersiz miktar")
-        if amount > bal:
-            return await ctx.send("❌ Yeterli paran yok")
+        if user["money"] < amount:
+            return await ctx.send("❌ Paran yetmiyor")
+        if choice.lower() not in ["yazi", "tura"]:
+            return await ctx.send("❌ yazi / tura yaz")
 
-        win = random.choice([True, False])
+        flip = random.choice(["yazi", "tura"])
 
-        if win:
-            bal += amount
-            msg = f"🪙 **Kazandın!** +{amount}"
+        if flip == choice.lower():
+            user["money"] += amount
+            msg = f"🎉 Kazandın! **+{amount}** coin"
         else:
-            bal -= amount
-            msg = f"💀 **Kaybettin!** -{amount}"
+            user["money"] -= amount
+            msg = f"💀 Kaybettin! **-{amount}** coin"
 
-        await self.update_balance(ctx.author.id, bal)
-        await ctx.send(msg)
+        save_data(self.data)
+        await ctx.send(f"🪙 Sonuç: **{flip}**\n{msg}")
 
+    # ========= LEADERBOARD =========
     @commands.command()
-    async def blackjack(self, ctx, bet: int):
-        bal, _ = await self.get_user(ctx.author.id)
+    async def top(self, ctx):
+        sorted_users = sorted(
+            self.data.items(),
+            key=lambda x: x[1]["money"],
+            reverse=True
+        )[:5]
 
-        if bet <= 0 or bet > bal:
-            return await ctx.send("❌ Geçersiz bahis")
+        msg = ""
+        for i, (uid, info) in enumerate(sorted_users, 1):
+            user = await self.bot.fetch_user(int(uid))
+            msg += f"**{i}. {user.name}** → {info['money']} coin\n"
 
-        def draw():
-            return random.randint(1, 11)
+        await ctx.send(f"🏆 **Top 5 Zenginler**\n{msg}")
 
-        player = draw() + draw()
-        dealer = draw() + draw()
-
-        if player > 21:
-            bal -= bet
-            result = "💥 Bust! Kaybettin"
-        elif dealer > 21 or player > dealer:
-            bal += bet
-            result = "🃏 Kazandın!"
-        elif player == dealer:
-            result = "🤝 Berabere"
-        else:
-            bal -= bet
-            result = "💀 Kaybettin"
-
-        await self.update_balance(ctx.author.id, bal)
-
-        embed = discord.Embed(
-            title="🃏 Blackjack",
-            color=discord.Color.gold()
-        )
-        embed.add_field(name="Sen", value=str(player))
-        embed.add_field(name="Dealer", value=str(dealer))
-        embed.add_field(name="Sonuç", value=result, inline=False)
-        embed.add_field(name="Bakiye", value=f"{bal} coin", inline=False)
-
-        await ctx.send(embed=embed)
-
-    @commands.command()
-    async def helpowo(self, ctx):
-        embed = discord.Embed(
-            title="🐾 OwO Bot Komutları",
-            color=discord.Color.pink()
-        )
-        embed.add_field(name="💰 Ekonomi", value="`!bal` `!daily`", inline=False)
-        embed.add_field(name="🎲 Oyunlar", value="`!cf <miktar>` `!blackjack <bahis>`", inline=False)
-        await ctx.send(embed=embed)
 
 async def setup(bot):
-    await bot.add_cog(OwO(bot))
+    await bot.add_cog(Owo(bot))
