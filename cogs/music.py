@@ -17,6 +17,16 @@ FFMPEG_OPTS = {
 
 
 class MusicState:
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.change_presence(
+            activity=discord.Streaming(
+                name="SSD Moderation 🤍",
+                url="https://twitch.tv/ssd"
+            )
+        )
+        print("🛡️ MUSIC BOT READY")
+    
     def __init__(self, bot):
         self.bot = bot
         self.queue = asyncio.Queue()
