@@ -7,7 +7,15 @@ class TicketView(discord.ui.View):
     def __init__(self, support_role_id: int):
         super().__init__(timeout=None)
         self.support_role_id = support_role_id
-
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.change_presence(
+            activity=discord.Streaming(
+                name="SSD Moderation 🤍",
+                url="https://twitch.tv/ssd"
+            )
+        )
+        print("🛡️ TICKET BOT READY")
     @discord.ui.button(label="🎫 Ticket Aç", style=discord.ButtonStyle.green)
     async def open_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
