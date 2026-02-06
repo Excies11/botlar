@@ -61,7 +61,16 @@ class Owo(commands.Cog):
         save_data(self.data)
 
         await ctx.send(f"🎁 Daily aldın! **+{reward} coin**")
-
+        
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.change_presence(
+            activity=discord.Streaming(
+                name="SSD Moderation 🤍",
+                url="https://twitch.tv/ssd"
+            )
+        )
+        print("🛡️ owo BOT READY")
     # ========= HUNT =========
     @commands.command()
     async def hunt(self, ctx):
