@@ -69,7 +69,6 @@ async def main():
             os.getenv("MUSIC_TOKEN"),
             "MUSIC BOT",
             "cogs.music",
-            voice_channel_id=1464939407139147890
   # 👈 music bot ses kanalına girer
         ),
         start_bot(
