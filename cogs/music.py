@@ -27,7 +27,7 @@ class MusicState:
 
     async def add(self, query):
         with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
-            info = ydl.extract_info(query, download=False)
+            info = ydl.extract_info(f"ytsearch:{query}", download=False)["entries"][0]
             if "entries" in info:
                 info = info["entries"][0]
         await self.queue.put(info)
