@@ -1,102 +1,167 @@
 import discord
 from discord.ext import commands
+from datetime import datetime
 
-LOG_CHANNEL_ID = 1409915479438393425  # mllog kanalı
+LOG_CHANNEL_ID = 1409914069317718017
 
 
-class MLog(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+class Logs(commands.Cog):
+    def __init__(self, bot):
         self.bot = bot
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("🟣 MLOG BOT READY")
+    # ========== YARDIMCI ==========
+    async def send_log(self, guild, embed):
+        channel = guild.get_channel(LOG_CHANNEL_ID)
+        if channel:
+            await channel.send(embed=embed)
 
-    # ===== MEMBER JOIN =====
-    @commands.Cog.listener()
-    async def on_member_join(self, member: discord.Member):
-        channel = member.guild.get_channel(LOG_CHANNEL_ID)
-        if not channel:
-            return
-
+    def base_embed(self, title, color=discord.Color.blurple()):
         embed = discord.Embed(
-            title="➕ Sunucuya Katıldı",
-            color=discord.Color.green()
+            title=title,
+            color=color,
+            timestamp=datetime.utcnow()
         )
-        embed.add_field(name="Kullanıcı", value=member.mention, inline=False)
-        embed.add_field(name="ID", value=member.id, inline=False)
+        return embed
 
-        await channel.send(embed=embed)
-    # ================= READY =================
+    # ========== SUNUCU GİRİŞ / ÇIKIŞ ==========
     @commands.Cog.listener()
-    async def on_ready(self):
-        await self.bot.change_presence(
-            activity=discord.Streaming(
-                name="SSD Discord 🤍",
-                url="https://twitch.tv/ssd"
+    async def on_member_join(self, member):
+        embed = self.base_embed("🚪 Sunucuya Giriş", discord.Color.green())
+        embed.add_field(name="Kullanıcı", value=f"{member} ({member.id})")
+        await self.send_log(member.guild, embed)
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member):
+        embed = self.base_embed("🚪 Sunucudan Çıkış", discord.Color.red())
+        embed.add_field(name="Kullanıcı", value=f"{member} ({member.id})")
+        await self.send_log(member.guild, embed)
+
+    # ========== PROFİL / İSİM ==========
+    @commands.Cog.listener()
+    async def on_user_update(self, before, after):
+        if before.avatar != after.avatar:
+            embed = self.base_embed("🖼️ Profil Fotoğrafı Değişti")
+            embed.add_field(name="Kullanıcı", value=f"{after} ({after.id})")
+            embed.set_thumbnail(url=after.display_avatar.url)
+            for guild in self.bot.guilds:
+                await self.send_log(guild, embed)
+
+        if before.name != after.name:
+            embed = self.base_embed("✏️ Kullanıcı Adı Değişti")
+            embed.add_field(
+                name="Eski",
+                value=before.name,
+                inline=True
             )
-        )
-        print("🎵 MUSIC BOT READY")
-    # ===== MEMBER LEAVE =====
+            embed.add_field(
+                name="Yeni",
+                value=after.name,
+                inline=True
+            )
+            for guild in self.bot.guilds:
+                await self.send_log(guild, embed)
+
+    # ========== ROL DEĞİŞİKLİK ==========
     @commands.Cog.listener()
-    async def on_member_remove(self, member: discord.Member):
-        channel = member.guild.get_channel(LOG_CHANNEL_ID)
-        if not channel:
-            return
+    async def on_member_update(self, before, after):
+        if before.roles != after.roles:
+            added = set(after.roles) - set(before.roles)
+            removed = set(before.roles) - set(after.roles)
 
-        embed = discord.Embed(
-            title="➖ Sunucudan Ayrıldı",
-            color=discord.Color.red()
-        )
-        embed.add_field(name="Kullanıcı", value=str(member), inline=False)
-        embed.add_field(name="ID", value=member.id, inline=False)
+            embed = self.base_embed("🎭 Rol Güncellendi")
 
-        await channel.send(embed=embed)
+            if added:
+                embed.add_field(
+                    name="➕ Eklenen",
+                    value=", ".join(r.name for r in added),
+                    inline=False
+                )
 
-    # ===== MESSAGE DELETE =====
+            if removed:
+                embed.add_field(
+                    name="➖ Kaldırılan",
+                    value=", ".join(r.name for r in removed),
+                    inline=False
+                )
+
+            embed.add_field(
+                name="Kullanıcı",
+                value=f"{after} ({after.id})",
+                inline=False
+            )
+
+            await self.send_log(after.guild, embed)
+
+    # ========== BAN / UNBAN ==========
     @commands.Cog.listener()
-    async def on_message_delete(self, message: discord.Message):
-        if not message.guild or message.author.bot:
+    async def on_member_ban(self, guild, user):
+        embed = self.base_embed("🔨 Ban Atıldı", discord.Color.dark_red())
+        embed.add_field(name="Kullanıcı", value=f"{user} ({user.id})")
+        await self.send_log(guild, embed)
+
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild, user):
+        embed = self.base_embed("♻️ Ban Kaldırıldı", discord.Color.green())
+        embed.add_field(name="Kullanıcı", value=f"{user} ({user.id})")
+        await self.send_log(guild, embed)
+
+    # ========== TIMEOUT ==========
+    @commands.Cog.listener()
+    async def on_member_update_timeout(self, before, after):
+        if before.communication_disabled_until != after.communication_disabled_until:
+            embed = self.base_embed("⏱️ Timeout Güncellendi")
+            embed.add_field(name="Kullanıcı", value=f"{after} ({after.id})")
+            embed.add_field(
+                name="Yeni Süre",
+                value=str(after.communication_disabled_until),
+                inline=False
+            )
+            await self.send_log(after.guild, embed)
+
+    # ========== MESAJ SİLME ==========
+    @commands.Cog.listener()
+    async def on_message_delete(self, message):
+        if message.author.bot:
             return
 
-        channel = message.guild.get_channel(LOG_CHANNEL_ID)
-        if not channel:
-            return
-
-        embed = discord.Embed(
-            title="🗑️ Mesaj Silindi",
-            color=discord.Color.red()
-        )
-        embed.add_field(name="Kullanıcı", value=message.author.mention, inline=False)
-        embed.add_field(name="Kanal", value=message.channel.mention, inline=False)
+        embed = self.base_embed("🗑️ Mesaj Silindi", discord.Color.orange())
+        embed.add_field(name="Kullanıcı", value=message.author.mention)
+        embed.add_field(name="Kanal", value=message.channel.mention)
         embed.add_field(
-            name="Mesaj",
-            value=message.content[:1000] if message.content else "*Boş / embed*",
+            name="İçerik",
+            value=message.content or "Boş",
             inline=False
         )
+        await self.send_log(message.guild, embed)
 
-        await channel.send(embed=embed)
-
-    # ===== MESSAGE EDIT =====
+    # ========== MESAJ DÜZENLEME ==========
     @commands.Cog.listener()
-    async def on_message_edit(self, before: discord.Message, after: discord.Message):
-        if before.author.bot or before.content == after.content:
+    async def on_message_edit(self, before, after):
+        if before.author.bot:
+            return
+        if before.content == after.content:
             return
 
-        channel = before.guild.get_channel(LOG_CHANNEL_ID)
-        if not channel:
-            return
-
-        embed = discord.Embed(
-            title="✏️ Mesaj Düzenlendi",
-            color=discord.Color.orange()
+        embed = self.base_embed("✏️ Mesaj Düzenlendi")
+        embed.add_field(name="Kullanıcı", value=before.author.mention)
+        embed.add_field(name="Kanal", value=before.channel.mention)
+        embed.add_field(
+            name="Eski",
+            value=before.content[:1000],
+            inline=False
         )
-        embed.add_field(name="Kullanıcı", value=before.author.mention, inline=False)
-        embed.add_field(name="Eski", value=before.content[:500], inline=False)
-        embed.add_field(name="Yeni", value=after.content[:500], inline=False)
+        embed.add_field(
+            name="Yeni",
+            value=after.content[:1000],
+            inline=False
+        )
+        await self.send_log(before.guild, embed)
 
-        await channel.send(embed=embed)
+    # ========== READY ==========
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print("📑 LOG BOT READY")
 
 
-async def setup(bot: commands.Bot):
-    await bot.add_cog(MLog(bot))
+async def setup(bot):
+    await bot.add_cog(Logs(bot))
